@@ -12,7 +12,7 @@ class PayrollRecord extends Model
     protected $fillable = [
         'team_member_id',
         'date_range',
-        'project',
+        'project',  
         'days',
         'salary',
     ];

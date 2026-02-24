@@ -11,6 +11,15 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
+
+    Route::middleware(['auth', 'role:admin'])->group(function () {
+        Route::get('/projects/index', fn () => view('index'));
+    });
+
+    Route::middleware(['auth', 'role:pm'])->group(function () {
+        Route::get('/projects/index', fn () => view('index'));
+    });
+
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');

@@ -8,12 +8,43 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MaterialController;
+use App\Http\Controllers\Employee\EmployeeProjectController;
+use App\Http\Controllers\Employee\EmployeeInventoryController;
 
 Route::get('/', function () {
     return redirect()->route('projects.index');
 });
 
 Route::middleware(['auth'])->group(function () {
+
+    //Employee-side-login-authentication
+  //  Route::middleware(['auth', 'role:employee'])->group(function () {
+   // Route::get('/employee/projects/employeedashboard', function () {
+    //    return view('employee.projects.employeedashboard');
+   // })->name('employee.projects.employeedashboard');
+   // });
+
+    //Employee-side-projects and //Employee-side-login-authentication
+    Route::prefix('employee')
+    ->middleware(['auth', 'role:employee'])
+    ->group(function () {
+
+        //employee- projects
+        Route::get('/projects', [EmployeeProjectController::class, 'index'])
+            ->name('employee.projects.employeedashboard');
+
+        Route::get('/projects/{id}', [EmployeeProjectController::class, 'show'])
+            ->name('employee.projects.show');
+
+    });
+
+    Route::middleware(['auth', 'role:employee'])->prefix('employee')->name('employee.')->group(function () {
+
+    // Employee Inventory
+    Route::get('/inventory', [EmployeeInventoryController::class, 'index'])
+        ->name('inventory.index');
+
+    });
 
     // Projects
     Route::prefix('projects')->name('projects.')->group(function () {
@@ -73,7 +104,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/update-threshold', [InventoryController::class, 'updateThreshold'])->name('update-threshold');
     });
 
-    // ✅ NEW Materials (MMS) — REPLACEMENT BLOCK
+    //  NEW Materials (MMS) — REPLACEMENT BLOCK
     Route::prefix('materials')->name('materials.')->group(function () {
 
         Route::get('/', [MaterialController::class, 'overview'])->name('overview');
