@@ -29,11 +29,12 @@ class AuthenticatedSessionController extends Controller
 
     $user = Auth::user();
 
-    return match ($user->role) {
-        'admin', 'pm', 'finance' => redirect()->route('projects.index'),
-        'employee'              => redirect()->route('employee.projects.employeedashboard'),
-        default                 => redirect('/'),
-    };
+        $user = $request->user();
+        if ($user && $user->role === 'employee') {
+            return redirect()->route('employee.projects.employeedashboard');
+        }
+
+        return redirect()->intended(route('projects.index', absolute: false));
     }
 
     /**

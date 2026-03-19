@@ -1,74 +1,91 @@
 @extends('employee.layouts.app')
 
 @section('content')
-<!-- Header with Search -->
-<div class="sticky top-0 z-40 bg-[#e7e7e7]/95 backdrop-blur border-b border-black/10">
-    <div class="px-6 py-4 flex items-center justify-between">
+<div class="min-h-screen bg-[#ECECEC] p-6">
+    <div class="mb-6 flex items-center justify-between gap-4">
         <div>
-            <h1 class="text-xl font-semibold text-[#2b2b2b]">Project Management</h1>
+            <h1 class="text-2xl font-bold text-[#111]">My Assigned Projects</h1>
+            <p class="text-sm text-gray-600 mt-1">
+                Projects assigned from Admin Project creation and Team Assign Roles.
+            </p>
         </div>
-        <div class="flex items-center gap-4">
-            <form method="GET" action="{{ route('employee.projects.employeedashboard') }}" class="relative">
-                <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#2b2b2b]/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input type="text" name="search" placeholder="Search" value="{{ request('search') }}" class="pl-11 pr-4 py-2 w-64 bg-[#dedede] text-[#2b2b2b] placeholder-[#2b2b2b]/50 border border-black/10 rounded-full text-sm focus:ring-2 focus:ring-[#f6c915] focus:bg-white transition">
-            </form>
+
+        <form method="GET" action="{{ route('employee.projects.employeedashboard') }}" class="w-[420px] max-w-full">
+            <div class="relative">
+                <input
+                    type="text"
+                    name="search"
+                    value="{{ request('search') }}"
+                    placeholder="Search projects"
+                    class="w-full rounded-full border border-gray-400 bg-[#EDEDED] px-5 py-2 pr-11 text-sm outline-none"
+                >
+                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2"/>
+                        <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    @if(!$teamMember)
+        <div class="rounded-xl border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
+            Your account is not linked to a Team Member record yet. Please contact admin.
         </div>
+    @endif
+
+    <div class="mt-6">
+        @if(session('error'))
+            <div class="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        @if(session('success'))
+            <div class="mb-4 rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if($projects->isEmpty())
+            <div class="rounded-2xl border border-gray-400 bg-[#E6E6E6] p-8 text-center text-gray-700">
+                No assigned projects found.
+            </div>
+        @else
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                @foreach($projects as $project)
+                    <a
+                        href="{{ route('employee.projects.show', $project->id) }}"
+                        class="group rounded-2xl overflow-hidden border border-black/10 bg-[#e7e7e7] shadow-[0_8px_18px_rgba(0,0,0,0.15)] transition hover:-translate-y-1"
+                    >
+                        <div class="p-3 pb-2">
+                            <div class="relative h-32 overflow-hidden rounded-xl bg-[#dcdcdc] shadow-[0_6px_14px_rgba(0,0,0,0.25)]">
+                                @if($project->image)
+                                    <img src="{{ asset('storage/' . $project->image) }}" alt="{{ $project->name }}" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                @else
+                                    <div class="h-full w-full bg-gradient-to-br from-[#f6c915] to-[#eab308]"></div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="px-4 pb-4 pt-1">
+                            <h3 class="font-semibold text-sm text-[#2b2b2b] truncate">{{ $project->name }}</h3>
+                            <p class="text-xs text-[#2b2b2b]/70 mt-0.5">{{ $project->type }}</p>
+
+                            <div class="mt-3 flex items-center justify-between text-xs">
+                                <span class="text-[#2b2b2b]/70">Status</span>
+                                <span class="font-semibold text-[#2b2b2b]">{{ ucfirst($project->status ?? 'pending') }}</span>
+                            </div>
+
+                            <div class="mt-1.5 w-full bg-[#d2d2d2] rounded-full h-2 overflow-hidden">
+                                <div class="bg-[#f6c915] h-2 rounded-full" style="width: {{ (int) ($project->progress ?? 0) }}%"></div>
+                            </div>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        @endif
     </div>
 </div>
-
-<!-- Projects Grid -->
-<div class="min-h-screen bg-[#e7e7e7] p-6">
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-        @foreach($projects as $project)
-        <div class="project-card group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 bg-[#e7e7e7] border border-black/10 shadow-[0_8px_18px_rgba(0,0,0,0.15)] hover:-translate-y-1" onclick="window.location.href='{{ route('employee.projects.show', $project->id) }}'">
-            <!-- Project Image -->
-            <div class="p-3 pb-2">
-                <div class="relative h-32 overflow-hidden rounded-xl bg-[#dcdcdc] shadow-[0_6px_14px_rgba(0,0,0,0.25)]">
-                    @if($project->image)
-                    <img src="{{ asset('storage/' . $project->image) }}" alt="{{ $project->name }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
-                    @else
-                    <div class="w-full h-full bg-gradient-to-br from-[#f6c915] to-[#eab308]"></div>
-                    @endif
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent"></div>
-                    
-                    @if($project->status === 'completed')
-                    <div class="absolute top-2 right-2 px-2.5 py-1 bg-green-600 text-white text-xs rounded-full font-medium flex items-center gap-1">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        Completed
-                    </div>
-                    @endif
-                </div>
-            </div>
-            
-            <!-- Project Info -->
-            <div class="px-4 pb-4 pt-1">
-                <h3 class="font-semibold text-sm text-[#2b2b2b] truncate group-hover:text-[#d19b00] transition">{{ $project->name }}</h3>
-                <p class="text-xs text-[#2b2b2b]/70 mt-0.5">{{ $project->type }}</p>
-                
-                @if($project->status !== 'completed')
-                <div class="mt-3">
-                    <div class="flex items-center justify-between text-xs mb-1.5">
-                        <span class="text-[#2b2b2b]/70 font-medium">Progress</span>
-                        <span class="font-semibold text-[#2b2b2b]">{{ $project->progress }}%</span>
-                    </div>
-                    <div class="w-full bg-[#d2d2d2] rounded-full h-2 overflow-hidden">
-                        <div class="bg-[#f6c915] h-2 rounded-full transition-all duration-500" style="width: {{ $project->progress }}%"></div>
-                    </div>
-                </div>
-                @endif
-            </div>
-        </div>
-        @endforeach
-        
-
-
-<style>
-    .project-card:hover {
-        box-shadow: 0 14px 22px -8px rgba(0, 0, 0, 0.18);
-    }
-</style>
 @endsection

@@ -1,442 +1,453 @@
 @extends('employee.layouts.app')
 
 @section('content')
+@php
+    $currentMember = $project->teamMembers->firstWhere('email', auth()->user()->email) ?? $project->teamMembers->first();
+    $projectImage = $project->image ? asset('storage/' . $project->image) : null;
+    $startDate = $project->start_date ? \Carbon\Carbon::parse($project->start_date)->format('F d, Y') : '-';
+    $endDate = $project->end_date ? \Carbon\Carbon::parse($project->end_date)->format('F d, Y') : '-';
+@endphp
+
 <style>
-    .print-only { display: none; }
-    .screen-only { display: block; }
-
-    .project-scroll {
-        scrollbar-width: thin;
-        scrollbar-color: #5a5a5a #3f3f3f;
+    .pm-page {
+        min-height: 100vh;
+        background: #dcdcdc;
+        padding: 26px 28px 40px;
+        font-family: "Inter", sans-serif;
     }
-    .project-scroll::-webkit-scrollbar { width: 8px; }
-    .project-scroll::-webkit-scrollbar-track { background: #3f3f3f; }
-    .project-scroll::-webkit-scrollbar-thumb { background: #5a5a5a; border-radius: 999px; border: 2px solid #3f3f3f; }
-    .project-scroll::-webkit-scrollbar-thumb:hover { background: #6a6a6a; }
 
-    @media print {
-        .screen-only { display: none !important; }
-        .print-only { display: block !important; }
+    .pm-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #111;
+        margin: 6px 0 12px 4px;
+    }
 
-        .print-page {
-            font-family: "Times New Roman", Times, serif;
-            color: #000;
-            max-width: 7.5in;
-            margin: 0 auto;
-        }
-        .print-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 0.4in;
-        }
-        .print-title {
-            font-size: 20pt;
-            font-weight: bold;
-            margin-bottom: 10pt;
-        }
-        .print-meta {
-            font-size: 12pt;
-        }
-        .print-line {
-            margin: 2pt 0;
-        }
-        .print-line .label {
-            font-style: italic;
-        }
-        .print-line .value {
-            font-weight: bold;
-        }
-        .print-image {
-            width: 3.7in;
-            height: 3.1in;
-        }
-        .print-image img,
-        .print-image .print-image-placeholder {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border: 1px solid #000;
-        }
-        .print-section-title {
-            font-weight: bold;
-            font-size: 12pt;
-            margin: 16pt 0 6pt;
-        }
-        .print-description {
-            font-size: 12pt;
-            line-height: 1.4;
-        }
-        .print-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11pt;
-        }
-        .print-table th,
-        .print-table td {
-            border: 1px solid #000;
-            padding: 4px 6px;
-            vertical-align: top;
-        }
-        .print-table th {
-            text-align: center;
-            font-weight: bold;
-        }
-        .print-overall {
-            font-weight: bold;
-            font-size: 12pt;
-            margin-top: 6pt;
-        }
+    .pm-panel {
+        border: 1px solid #9b9b9b;
+        border-radius: 18px;
+        padding: 12px;
+        background: #dcdcdc;
+    }
 
-        .project-scroll {
-            max-height: none !important;
-            min-height: 0 !important;
-            overflow: visible !important;
+    .pm-panel-inner {
+        background: #fefefe;
+        border-radius: 20px;
+        padding: 26px 30px 30px;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+    }
+
+    .pm-grid {
+        display: grid;
+        grid-template-columns: minmax(420px, 1fr) minmax(360px, 520px);
+        gap: 32px 40px;
+        align-items: start;
+    }
+
+    .pm-tag {
+        display: inline-block;
+        background: #ffd200;
+        color: #1b1b1b;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+    }
+
+    .pm-name {
+        font-size: 26px;
+        font-weight: 700;
+        color: #1b1b1b;
+        margin: 0 0 8px;
+    }
+
+    .pm-desc {
+        font-size: 12px;
+        color: #5a5a5a;
+        line-height: 1.6;
+        max-width: 420px;
+    }
+
+    .pm-team {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 18px 0 8px;
+    }
+
+    .pm-team-logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        background: #111;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .pm-team-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .pm-team-text {
+        font-size: 12px;
+        color: #0b74ff;
+        font-weight: 600;
+    }
+
+    .pm-team-name {
+        font-size: 18px;
+        font-weight: 700;
+        margin-top: 2px;
+        color: #1b1b1b;
+    }
+
+    .pm-info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 40px;
+        row-gap: 14px;
+        margin-top: 10px;
+    }
+
+    .pm-info-label {
+        font-size: 11px;
+        color: #0b74ff;
+        font-weight: 600;
+        margin-bottom: 3px;
+    }
+
+    .pm-info-value {
+        font-size: 14px;
+        color: #1b1b1b;
+        font-weight: 600;
+    }
+
+    .pm-timeframe {
+        margin-top: 16px;
+    }
+
+    .pm-timeframe .pm-info-label {
+        margin-bottom: 6px;
+    }
+
+    .pm-timeframe p {
+        margin: 4px 0;
+        font-size: 12px;
+        color: #1b1b1b;
+    }
+
+    .pm-image {
+        width: 100%;
+        height: 210px;
+        border-radius: 28px;
+        overflow: hidden;
+        background: #d0d0d0;
+        box-shadow: 0 10px 18px rgba(0,0,0,0.12);
+    }
+
+    .pm-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .pm-bar {
+        margin-top: 26px;
+        background: #3a3a3a;
+        border-radius: 14px;
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: #f3f3f3;
+    }
+
+    .pm-bar-title {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    .pm-search {
+        position: relative;
+        width: 190px;
+    }
+
+    .pm-search input {
+        width: 100%;
+        height: 26px;
+        border-radius: 999px;
+        border: 1px solid #c9c9c9;
+        background: transparent;
+        color: #f3f3f3;
+        font-size: 11px;
+        padding: 0 30px 0 12px;
+        outline: none;
+    }
+
+    .pm-search svg {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 12px;
+        height: 12px;
+        color: #f3f3f3;
+    }
+
+    .pm-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #1f1f1f;
+    background: #f3f3f3;
+    border: 1px solid #cfcfcf;
+}
+
+    .pm-table thead tr,
+.pm-table tbody tr {
+    background: #f3f3f3;
+}
+
+    .pm-table th {
+    text-align: left;
+    font-size: 11px;
+    color: #6f6f6f;
+    font-weight: 600;
+    padding: 10px 4px 8px;
+    border-bottom: 1px solid #cfcfcf;
+}
+
+    .pm-table td {
+    padding: 12px 4px;
+    border-bottom: 1px solid #d6d6d6;
+    color: #1f1f1f;
+}
+
+    .pm-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .pm-assigned {
+        margin-top: 22px;
+    }
+
+    .pm-assigned .pm-bar {
+        margin-top: 0;
+    }
+
+    .pm-total {
+        text-align: right;
+        margin-top: 8px;
+        font-weight: 700;
+        font-size: 12px;
+        color: #1b1b1b;
+    }
+
+    @media (max-width: 1200px) {
+        .pm-grid {
+            grid-template-columns: 1fr;
         }
-        .project-scroll thead {
-            position: static !important;
+        .pm-image {
+            height: 220px;
         }
-        .project-scroll tr {
-            break-inside: avoid;
+    }
+
+    @media (max-width: 768px) {
+        .pm-page {
+            padding: 18px;
+        }
+        .pm-panel-inner {
+            padding: 20px;
+        }
+        .pm-info-grid {
+            grid-template-columns: 1fr;
+        }
+        .pm-search {
+            width: 140px;
         }
     }
 </style>
-<div class="print-only">
-    <div class="print-page">
-        <div class="print-header">
-            <div class="print-left">
-                <div class="print-title">{{ $project->name }}</div>
-                <div class="print-meta">
-                    <div class="print-line"><span class="label">Project Code</span>: <span class="value">{{ $project->code }}</span></div>
-                    <div class="print-line"><span class="label">Project Type</span>: <span class="value">{{ $project->type }}</span></div>
-                    <div class="print-line"><span class="label">Client / Owner</span>: <span class="value">{{ $project->client }}</span></div>
-                    <div class="print-line"><span class="label">Location</span>: <span class="value">{{ $project->location }}</span></div>
-                    <div class="print-line"><span class="label">Start Date</span>: <span class="value">{{ optional($project->start_date)->format('F d, Y') ?? '-' }}</span></div>
-                    <div class="print-line"><span class="label">Expected End Date</span>: <span class="value">{{ optional($project->end_date)->format('F d, Y') ?? '-' }}</span></div>
-                    <div class="print-line"><span class="label">Status</span>: <span class="value">{{ ucfirst($project->status ?? 'pending') }}</span></div>
-                    <div class="print-line"><span class="label">Progress</span>: <span class="value">{{ $project->progress ?? 0 }}%</span></div>
-                </div>
-            </div>
-            <div class="print-image">
-                @if($project->image)
-                    <img src="{{ asset('storage/' . $project->image) }}" alt="{{ $project->name }}">
-                @else
-                    <div class="print-image-placeholder"></div>
-                @endif
-            </div>
-        </div>
 
-        <div class="print-section-title">Description:</div>
-        <div class="print-description">
-            {{ $project->description }}
-        </div>
+<div class="pm-page">
+    <div class="pm-title">Project Management</div>
 
-        <div class="print-section-title">Project Materials</div>
-        <table class="print-table">
-            <thead>
-                <tr>
-                    <th>Material</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
-                    <th>Total</th>
-                    <th>Last Used</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($projectMaterials as $row)
-                    <tr>
-                        <td>{{ $row->material?->material_name ?? 'Unknown' }}</td>
-                        <td>
-                            {{ rtrim(rtrim(number_format((float) $row->quantity, 2, '.', ''), '0'), '.') }}
-                            {{ $row->material?->unit_of_measure ?? '' }}
-                        </td>
-                        <td>₱{{ number_format((float) ($row->unit_price ?? 0), 2) }}</td>
-                        <td>₱{{ number_format((float) ($row->total ?? 0), 2) }}</td>
-                        <td>{{ $row->last_used ? $row->last_used->format('m-d-y') : '-' }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5">No materials recorded for this project.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-        <div class="print-overall">Overall Total: ₱{{ number_format((float) ($projectMaterialsTotal ?? 0), 2) }}</div>
+    <div class="pm-panel">
+        <div class="pm-panel-inner">
+            <div class="pm-grid">
+                <div>
+                    <span class="pm-tag">Project Name</span>
+                    <h1 class="pm-name">{{ $project->name }}</h1>
+                    <p class="pm-desc">{{ $project->description }}</p>
 
-        <div class="print-section-title" style="margin-top: 18pt;">Assigned Team</div>
-        <table class="print-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Role</th>
-                    <th>Location</th>
-                    <th>Rate</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($project->teamMembers as $member)
-                    <tr>
-                        <td>{{ $member->name }}</td>
-                        <td>{{ $member->role ?? '-' }}</td>
-                        <td>{{ $member->location ?? '-' }}</td>
-                        <td>{{ $member->salary ?? '-' }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="4">No assigned members yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-</div>
-<div class="screen-only">
-<div class="p-6">
-    <div class="max-w-6xl mx-auto">
-
-        <!--card-->
-        <div class="relative overflow-hidden rounded-2xl shadow-2xl border border-gray-800 bg-[#3f3f3f]">
-
-            <div class="grid grid-cols-1 md:grid-cols-5">
-
-                <!--LEFT PANEL-->
-                <div class="md:col-span-2 bg-yellow-500/25 p-5 text-white relative ">
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <div class="text-xs text-yellow-300/90 font-semibold tracking-wide">PROJECT DETAILS</div>
-                            <h1 class="text-2xl font-bold tracking-wide mt-1">{{ $project->name }}</h1>
+                    <div class="pm-team">
+                        <div class="pm-team-logo">
+                            <img src="{{ asset('images/logo-cms.png') }}" alt="Team Logo">
                         </div>
-
-                        <div class="flex items-center gap-2">
-                            <a href="{{ route('employee.projects.employeedashboard') }}"
-                               class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-black font-semibold hover:bg-orange-400 transition">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M15 19l-7-7 7-7"/>
-                                </svg>
-                                Back
-                            </a>
+                        <div>
+                            <div class="pm-team-text">Team</div>
+                            <div class="pm-team-name">Metalift</div>
                         </div>
                     </div>
 
-                    <!-- Image -->
-                    <div class="mt-6 rounded-xl overflow-hidden border border-white/10">
-                        @if($project->image)
-                            <img src="{{ asset('storage/' . $project->image) }}"
-                                 alt="{{ $project->name }}"
-                                 class="w-full h-52 object-cover">
+                    <div class="pm-info-grid">
+                        <div>
+                            <div class="pm-info-label">Assigned Role</div>
+                            <div class="pm-info-value">{{ $currentMember?->role ?? '-' }}</div>
+                        </div>
+                        <div>
+                            <div class="pm-info-label">Project Type</div>
+                            <div class="pm-info-value">{{ $project->type ?? '-' }}</div>
+                        </div>
+                        <div>
+                            <div class="pm-info-label">Department</div>
+                            <div class="pm-info-value">{{ $currentMember?->location ?? '-' }}</div>
+                        </div>
+                        <div>
+                            <div class="pm-info-label">Project Code</div>
+                            <div class="pm-info-value">{{ $project->code ?? '-' }}</div>
+                        </div>
+                        <div>
+                            <div class="pm-info-label">Location</div>
+                            <div class="pm-info-value">{{ $project->location ?? '-' }}</div>
+                        </div>
+                        <div>
+                            <div class="pm-info-label">Client/Owner</div>
+                            <div class="pm-info-value">{{ $project->client ?? '-' }}</div>
+                        </div>
+                    </div>
+
+                    <div class="pm-timeframe">
+                        <div class="pm-info-label">Timeframe</div>
+                        <p><strong>Start Date:</strong> {{ $startDate }}</p>
+                        <p><strong>End Date:</strong> {{ $endDate }}</p>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="pm-image">
+                        @if($projectImage)
+                            <img src="{{ $projectImage }}" alt="{{ $project->name }}">
                         @else
-                            <div class="w-full h-52 bg-gradient-to-br from-yellow-500 to-yellow-600"></div>
+                            <div style="width:100%;height:100%;background:linear-gradient(135deg,#d0d0d0,#bcbcbc);"></div>
                         @endif
                     </div>
 
-                    <!--Assigned Team -->
-                    <div class="bg-[#3f3f3f] rounded-2xl shadow-2xl border border-gray-800 overflow-hidden mt-6">
-                    <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-                        <h4 class="text-white font-semibold">Assigned Team</h4>
-                        <span class="text-xs text-white/60">{{ $project->teamMembers->count() }} member(s)</span>
-                    </div>
-
-                    <div class="max-h-[500px] min-h-[150px] overflow-y-auto project-scroll">
-                        <table class="w-full text-left">
-                            <thead class="sticky top-0 bg-[#3f3f3f] border-b border-white/10">
-                                <tr class="text-[11px] uppercase tracking-wide text-white/60">
-                                    <th class="px-6 py-3">Name</th>
-                                    <th class="px-6 py-3 w-32">Role</th>
-                                    <th class="px-6 py-3 w-28">Location</th>
-                                    <th class="px-6 py-3 w-24">Rate</th>
-                                </tr>
-                            </thead>
-
-                            <tbody class="divide-y divide-white/10">
-                                @forelse($project->teamMembers as $member)
-                                    <tr class="hover:bg-white/5 transition">
-                                        <td class="px-6 py-3">
-                                            <div class="flex items-center gap-3">
-                                                <div class="w-9 h-9 rounded-lg bg-black/30 border border-white/10 flex items-center justify-center text-xs font-bold text-yellow-300">
-                                                    {{ strtoupper(collect(explode(' ', $member->name))->filter()->take(2)->map(fn($w)=>substr($w,0,1))->join('')) }}
-                                                </div>
-                                                <div>
-                                                    <div class="text-sm font-semibold text-white">{{ $member->name }}</div>
-                                                    <div class="text-xs text-white/50">{{ $member->role }}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        <td class="px-6 py-3 text-sm text-white/80">{{ $member->role ?? '-' }}</td>
-                                        <td class="px-6 py-3 text-sm text-white/80">{{ $member->location ?? '-' }}</td>
-                                        <td class="px-6 py-3 text-sm text-white/80">{{ $member->salary ?? '-' }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="4" class="px-6 py-8 text-center text-white/50 text-sm">
-                                            No assigned members yet.
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                </div>
-
-                <!--RIGHT PANEL -->
-                <div class="md:col-span-3 p-10 text-white">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-lg font-semibold">Project Information</h2>
-                        <button type="button" data-report="print"
-                                class="no-print inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#f6c915] text-black font-semibold hover:brightness-95 transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <div class="pm-bar">
+                        <div class="pm-bar-title">Project Materials</div>
+                        <div class="pm-search">
+                            <input id="materialsSearch" type="text" placeholder="Search">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5-5m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
-                            Generate Report
-                        </button>
+                        </div>
                     </div>
 
-                    <div class="space-y-7">
+                    <table class="pm-table" id="materialsTable">
+                        <thead>
+                            <tr>
+                                <th>Material</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($projectMaterials as $row)
+                                <tr>
+                                    <td>{{ $row->material?->material_name ?? 'Unknown' }}</td>
+                                    <td>
+                                        {{ rtrim(rtrim(number_format((float) $row->quantity, 2, '.', ''), '0'), '.') }}
+                                        {{ $row->material?->unit_of_measure ?? '' }}
+                                    </td>
+                                    <td>&#8369;{{ number_format((float) ($row->unit_price ?? 0), 2) }}</td>
+                                    <td>&#8369;{{ number_format((float) ($row->total ?? 0), 2) }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4">No materials recorded for this project.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
 
-                        <!--Two columns info -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="pm-total">Overall Total: &#8369;{{ number_format((float) ($projectMaterialsTotal ?? 0), 2) }}</div>
+                </div>
+            </div>
 
-                            <div>
-                                <label class="text-sm font-semibold text-white/90">Project Code</label>
-                                <div class="mt-2 w-full bg-transparent border-b border-white/20 py-2 text-sm text-white/90">
-                                    {{ $project->code }}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="text-sm font-semibold text-white/90">Project Type</label>
-                                <div class="mt-2 w-full bg-transparent border-b border-white/20 py-2 text-sm text-white/90">
-                                    {{ $project->type }}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="text-sm font-semibold text-white/90">Client / Owner</label>
-                                <div class="mt-2 w-full bg-transparent border-b border-white/20 py-2 text-sm text-white/90">
-                                    {{ $project->client }}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="text-sm font-semibold text-white/90">Location</label>
-                                <div class="mt-2 w-full bg-transparent border-b border-white/20 py-2 text-sm text-white/90">
-                                    {{ $project->location }}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="text-sm font-semibold text-white/90">Start Date</label>
-                                <div class="mt-2 w-full bg-transparent border-b border-white/20 py-2 text-sm text-white/90">
-                                    {{ optional($project->start_date)->format('F d, Y') ?? '-' }}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="text-sm font-semibold text-white/90">Expected End Date</label>
-                                <div class="mt-2 w-full bg-transparent border-b border-white/20 py-2 text-sm text-white/90">
-                                    {{ optional($project->end_date)->format('F d, Y') ?? '-' }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!--Description -->
-                        <div>
-                            <label class="text-sm font-semibold text-white/90">Description</label>
-                            <div class="mt-2 w-full bg-transparent border border-white/15 rounded-lg p-4 text-sm text-white/80">
-                                {{ $project->description }}
-                            </div>
-                        </div>
-
-                        <!--Status + Progress + Total -->
-                        <div class="flex flex-wrap items-center gap-4">
-                            <div class="px-4 py-2 rounded-lg bg-black/30 border border-white/10">
-                                <span class="text-xs text-white/60">Status:</span>
-                                <span class="ml-2 text-sm font-semibold text-white">
-                                    {{ ucfirst($project->status ?? 'pending') }}
-                                </span>
-                            </div>
-
-                            <div class="px-4 py-2 rounded-lg bg-black/30 border border-white/10">
-                                <span class="text-xs text-white/60">Progress:</span>
-                                <span class="ml-2 text-sm font-semibold text-yellow-300">
-                                    {{ $project->progress ?? 0 }}%
-                                </span>
-                            </div>
-
-                            <div class="px-4 py-2 rounded-lg bg-black/30 border border-white/10 ml-auto">
-                                <span class="text-xs text-white/60">Total:</span>
-                                <span class="ml-2 text-sm font-semibold text-yellow-300">
-                                    ₱{{ number_format((float) ($projectMaterialsTotal ?? 0), 2) }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <!--Project Materials -->
-                        <div class="bg-[#3f3f3f] rounded-2xl shadow-2xl border border-gray-800 overflow-hidden">
-                            <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-                                <h4 class="text-white font-semibold">Project Materials</h4>
-                                <span class="text-xs text-white/60">{{ $projectMaterials->count() }} item(s)</span>
-                            </div>
-
-                            <div class="max-h-[500px] overflow-y-auto project-scroll">
-                                <table class="w-full text-left">
-                                    <thead class="sticky top-0 bg-[#3f3f3f] border-b border-white/10">
-                                        <tr class="text-[11px] uppercase tracking-wide text-white/60">
-                                            <th class="px-6 py-3">Material</th>
-                                            <th class="px-6 py-3 w-32">Quantity</th>
-                                            <th class="px-6 py-3 w-28">Price</th>
-                                            <th class="px-6 py-3 w-28">Total</th>
-                                            <th class="px-6 py-3 w-28">Last Used</th>
-                                        </tr>
-                                    </thead>
-
-                                    <tbody class="divide-y divide-white/10">
-                                        @forelse($projectMaterials as $row)
-                                            <tr class="hover:bg-white/5 transition">
-                                                <td class="px-6 py-3">
-                                                    <div class="text-sm font-semibold text-white">
-                                                        {{ $row->material?->material_name ?? 'Unknown' }}
-                                                    </div>
-                                                    <div class="text-xs text-white/50">
-                                                        {{ $row->material?->unit_of_measure ?? '' }}
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-3 text-sm text-white/80">
-                                                    {{ rtrim(rtrim(number_format((float) $row->quantity, 2, '.', ''), '0'), '.') }}
-                                                    {{ $row->material?->unit_of_measure ?? '' }}
-                                                </td>
-                                                <td class="px-6 py-3 text-sm text-white/80">
-                                                    ₱{{ number_format((float) ($row->unit_price ?? 0), 2) }}
-                                                </td>
-                                                <td class="px-6 py-3 text-sm text-white/80">
-                                                    ₱{{ number_format((float) ($row->total ?? 0), 2) }}
-                                                </td>
-                                                <td class="px-6 py-3 text-sm text-white/80">
-                                                    {{ $row->last_used ? $row->last_used->format('m-d-y') : '-' }}
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="5" class="px-6 py-8 text-center text-white/50 text-sm">
-                                                    No materials recorded for this project.
-                                                </td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
+            <div class="pm-assigned">
+                <div class="pm-bar">
+                    <div class="pm-bar-title">Assigned Team</div>
+                    <div class="pm-search">
+                        <input id="teamSearch" type="text" placeholder="Search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5-5m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
                     </div>
                 </div>
 
+                <table class="pm-table" id="teamTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Location</th>
+                            <th>Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($project->teamMembers as $member)
+                            <tr>
+                                <td>{{ $member->name }}</td>
+                                <td>{{ $member->role ?? '-' }}</td>
+                                <td>{{ $member->location ?? '-' }}</td>
+                                <td>{{ $member->salary ?? '-' }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4">No assigned members.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
-
     </div>
 </div>
-</div>
+
+<script>
+    (function () {
+        const materialsInput = document.getElementById('materialsSearch');
+        const materialsRows = document.querySelectorAll('#materialsTable tbody tr');
+
+        materialsInput?.addEventListener('input', () => {
+            const q = (materialsInput.value || '').toLowerCase().trim();
+            materialsRows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(q) ? '' : 'none';
+            });
+        });
+
+        const teamInput = document.getElementById('teamSearch');
+        const teamRows = document.querySelectorAll('#teamTable tbody tr');
+
+        teamInput?.addEventListener('input', () => {
+            const q = (teamInput.value || '').toLowerCase().trim();
+            teamRows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(q) ? '' : 'none';
+            });
+        });
+    })();
+</script>
 @endsection
+
+
+
+

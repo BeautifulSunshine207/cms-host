@@ -8,43 +8,50 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MaterialController;
-use App\Http\Controllers\Employee\EmployeeProjectController;
-use App\Http\Controllers\Employee\EmployeeInventoryController;
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Employee\ProjectController as EmployeeProjectController;
+use App\Http\Controllers\Employee\InventoryController as EmployeeInventoryController;
+use App\Http\Controllers\Employee\ProfileController as EmployeeProfileController;
+use App\Http\Controllers\Employee\TeamController as EmployeeTeamController;
 
 Route::get('/', function () {
     return redirect()->route('projects.index');
 });
 
 Route::middleware(['auth'])->group(function () {
+    // Profile
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [ProfileController::class, 'edit'])->name('edit');
+        Route::patch('/', [ProfileController::class, 'update'])->name('update');
+        Route::delete('/', [ProfileController::class, 'destroy'])->name('destroy');
+    });
+});
 
-    //Employee-side-login-authentication
-  //  Route::middleware(['auth', 'role:employee'])->group(function () {
-   // Route::get('/employee/projects/employeedashboard', function () {
-    //    return view('employee.projects.employeedashboard');
-   // })->name('employee.projects.employeedashboard');
-   // });
+Route::middleware(['auth', 'employee'])->prefix('employee')->name('employee.')->group(function () {
+    Route::get('/home', function () {
+        return redirect()->route('employee.projects.employeedashboard');
+    })->name('home');
 
-    //Employee-side-projects and //Employee-side-login-authentication
-    Route::prefix('employee')
-    ->middleware(['auth', 'role:employee'])
-    ->group(function () {
-
-        //employee- projects
-        Route::get('/projects', [EmployeeProjectController::class, 'index'])
-            ->name('employee.projects.employeedashboard');
-
-        Route::get('/projects/{id}', [EmployeeProjectController::class, 'show'])
-            ->name('employee.projects.show');
-
+    Route::prefix('team')->name('team.')->group(function () {
+        Route::get('/', [EmployeeTeamController::class, 'index'])->name('index');
+        Route::post('/projects/{projectId}/submit-report', [EmployeeTeamController::class, 'submitReport'])->name('submit-report');
     });
 
-    Route::middleware(['auth', 'role:employee'])->prefix('employee')->name('employee.')->group(function () {
-
-    // Employee Inventory
-    Route::get('/inventory', [EmployeeInventoryController::class, 'index'])
-        ->name('inventory.index');
-
+    Route::prefix('projects')->name('projects.')->group(function () {
+        Route::get('/', [EmployeeProjectController::class, 'dashboard'])->name('employeedashboard');
+        Route::get('/{id}', [EmployeeProjectController::class, 'show'])->name('show');
     });
+
+    Route::prefix('inventory')->name('inventory.')->group(function () {
+        Route::get('/', [EmployeeInventoryController::class, 'index'])->name('index');
+    });
+
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [EmployeeProfileController::class, 'show'])->name('show');
+    });
+});
+
+Route::middleware(['auth', 'admin'])->group(function () {
 
     // Projects
     Route::prefix('projects')->name('projects.')->group(function () {
@@ -84,11 +91,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/funds/add', [FinanceController::class, 'addFunds'])->name('funds.add');
     });
 
-    // Profile
-    Route::prefix('profile')->name('profile.')->group(function () {
-        Route::get('/', [ProfileController::class, 'edit'])->name('edit');
-        Route::patch('/', [ProfileController::class, 'update'])->name('update');
-        Route::delete('/', [ProfileController::class, 'destroy'])->name('destroy');
+    // Account (Create Employee Login)
+    Route::prefix('admin/account')->name('admin.account.')->group(function () {
+        Route::get('/create', [AccountController::class, 'create'])->name('create');
+        Route::post('/create', [AccountController::class, 'store'])->name('store');
     });
 
     // Inventory (IMS)
@@ -104,7 +110,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/update-threshold', [InventoryController::class, 'updateThreshold'])->name('update-threshold');
     });
 
-    //  NEW Materials (MMS) — REPLACEMENT BLOCK
+    // ✅ NEW Materials (MMS) — REPLACEMENT BLOCK
     Route::prefix('materials')->name('materials.')->group(function () {
 
         Route::get('/', [MaterialController::class, 'overview'])->name('overview');

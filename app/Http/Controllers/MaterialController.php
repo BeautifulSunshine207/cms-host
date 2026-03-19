@@ -34,7 +34,7 @@ class MaterialController extends Controller
 
         $materials = $q->orderBy('material_name')->get();
 
-        return view('materials.overview', compact('materials'));
+        return view('admin.materials.overview', compact('materials'));
     }
 
     //create page 1: choose supplier
@@ -49,7 +49,7 @@ class MaterialController extends Controller
 
         $suppliers = $q->orderBy('supplier_name')->get();
 
-        return view('materials.create', compact('suppliers'));
+        return view('admin.materials.create', compact('suppliers'));
     }
 
     //create page 2: show supplier products
@@ -62,7 +62,7 @@ class MaterialController extends Controller
 
         $cart = session()->get('mms_cart', []);
 
-        return view('materials.supplier-products', compact('supplier', 'products', 'cart'));
+        return view('admin.materials.supplier-products', compact('supplier', 'products', 'cart'));
     }
 
     public function addSupplierProduct(Request $request, Supplier $supplier)
@@ -178,7 +178,7 @@ class MaterialController extends Controller
     public function cartView()
     {
         $cart = session()->get('mms_cart', []);
-        return view('materials.cart', compact('cart'));
+        return view('admin.materials.cart', compact('cart'));
     }
 
     // create materials from cart then also create inventory rows
@@ -284,6 +284,6 @@ class MaterialController extends Controller
             ->latest()
             ->get();
 
-        return view('materials.history', compact('history'));
+        return view('admin.materials.history', compact('history'));
     }
 }

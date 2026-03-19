@@ -23,7 +23,7 @@ class ProjectController extends Controller
         
         $projects = $query->get();
         
-        return view('projects.index', compact('projects'));
+        return view('admin.projects.index', compact('projects'));
     }
 
     public function show($id)
@@ -60,7 +60,7 @@ class ProjectController extends Controller
                 return (float) ($row->total ?? 0);
             });
 
-            return view('projects.show', compact('project', 'projectMaterials', 'projectMaterialsTotal'));
+            return view('admin.projects.show', compact('project', 'projectMaterials', 'projectMaterialsTotal'));
         }
 
     public function create()
@@ -76,7 +76,7 @@ class ProjectController extends Controller
             'Bus Terminal Project'
         ];
         
-        return view('projects.create', compact('teamMembers', 'projectTypes'));
+        return view('admin.projects.create', compact('teamMembers', 'projectTypes'));
     }
 
     public function store(Request $request)
@@ -146,11 +146,5 @@ class ProjectController extends Controller
         return redirect()->route('projects.show', $project->id)->with('success', 'Project updated successfully');
     }
 
-    public function destroy($id)
-    {
-        $project = Project::findOrFail($id);
-        $project->delete();
 
-        return redirect()->route('projects.index')->with('success', 'Project deleted successfully');
-    }
 }

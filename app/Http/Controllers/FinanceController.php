@@ -19,7 +19,7 @@ class FinanceController extends Controller
         $payrollRequests = PayrollRequest::where('status', 'pending')->get();
         $expenseRequests = ExpenseRequest::where('status', 'pending')->get();
         
-        return view('finance.index', compact('stats', 'payrollRequests', 'expenseRequests'));
+        return view('admin.finance.index', compact('stats', 'payrollRequests', 'expenseRequests'));
     }
 
     private function getFinanceStats()

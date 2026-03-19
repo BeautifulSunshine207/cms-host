@@ -22,7 +22,7 @@
 
   {{-- Tabs --}}
   <div class="mt-8 flex items-center gap-12 text-sm font-semibold text-gray-500">
-    <a href="{{ route('inventory.index') }}" class="border-b-2 border-black pb-2 text-black">Overview</a>
+    <a href="{{ route('employee.inventory.index') }}" class="border-b-2 border-black pb-2 text-black">Overview</a>
   </div>
 
   {{-- Outer light frame --}}

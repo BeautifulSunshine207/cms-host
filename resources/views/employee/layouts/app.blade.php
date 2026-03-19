@@ -12,6 +12,66 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+
+        .employee-sidebar-header {
+            padding: 16px 18px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .employee-sidebar-title {
+            font-size: 12px;
+            letter-spacing: 0.14em;
+            color: #e5e5e5;
+            font-weight: 600;
+        }
+
+        .employee-logo-block {
+            padding: 10px 16px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .employee-logo-circle {
+            width: 62px;
+            height: 62px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: #ca8a04;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .employee-logo-text {
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .employee-nav {
+            padding: 0 14px;
+            margin-top: 6px;
+        }
+
+        .employee-nav ul {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .employee-bottom {
+            padding: 18px 14px 20px;
+        }
+
+        .employee-bottom ul {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
         
         .sidebar-collapsed {
             width: 4rem;
@@ -49,22 +109,9 @@
     <div class="min-h-screen flex">
         <!-- Sidebar -->
         <aside id="sidebar" class="fixed left-0 top-0 h-screen w-56 bg-[#3C3C3C] flex flex-col z-50 transition-all duration-300">
-            <!-- Logo Section -->
-            <div class="p-4 flex items-center justify-between border-b border-gray-700">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-yellow-600 flex items-center justify-center">
-                        <img 
-                            src="{{ asset('images/logo-cms.png') }}" 
-                            alt="Logo" 
-                            class="w-full h-full object-cover"
-                        >
-                    </div>
-                    <div class="sidebar-text">
-                        <span class="text-white font-bold text-sm tracking-wide">METALIFT</span>
-                        <p class="text-gray-400 text-xs">Construction</p>
-                    </div>
-                </div>
-                <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white transition-colors">
+            <div class="employee-sidebar-header">
+                <span class="sidebar-text employee-sidebar-title">EMPLOYEE</span>
+                <button onclick="toggleSidebar()" class="text-gray-300 hover:text-white transition-colors">
                     <svg class="w-5 h-5 collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
@@ -74,14 +121,23 @@
                 </button>
             </div>
 
-            <!-- Admin Label -->
-            <div class="px-4 py-3">
-                <span class="sidebar-text text-gray-500 text-xs uppercase tracking-wider">Employee</span>
+            <div class="employee-logo-block">
+                <div class="employee-logo-circle">
+                    <img 
+                        src="{{ asset('images/logo-cms.png') }}" 
+                        alt="Logo" 
+                        class="w-full h-full object-cover"
+                    >
+                </div>
+                <div class="sidebar-text employee-logo-text">
+                    <span class="text-white font-bold text-sm tracking-wide">METALIFT</span>
+                    <p class="text-gray-300 text-xs">Construction</p>
+                </div>
             </div>
 
             <!-- Navigation -->
-            <nav class="flex-1 px-2">
-                <ul class="space-y-1">
+            <nav class="employee-nav flex-1">
+                <ul>
                     <li>
                         <a href="{{ route('employee.projects.employeedashboard') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {{ request()->routeIs('employee.projects.*') ? 'bg-[#334155] text-yellow-500' : 'text-gray-300 hover:bg-yellow-600' }} transition-all">
                             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,15 +147,12 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('team.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {{ request()->routeIs('team.*') ? 'bg-[#334155] text-yellow-500' : 'text-gray-300 hover:bg-yellow-600' }} transition-all">
+                        <a href="{{ route('employee.team.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {{ request()->routeIs('employee.team.*') ? 'bg-[#334155] text-yellow-500' : 'text-gray-300 hover:bg-yellow-600' }} transition-all">
                             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-1a4 4 0 0 0-5-3.87M17 20H7m10 0v-1c0-.66-.13-1.3-.38-1.87M7 20H2v-1a4 4 0 0 1 5-3.87M7 20v-1c0-.66.13-1.3.38-1.87m9.24 0a5 5 0 0 0-9.24 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z" />
                             </svg>
                             <span class="sidebar-text text-sm font-medium">Team</span>
                         </a>
-                    </li>
-                    <li>
-                        
                     </li>
                     <li>
                         <a href="{{ route('employee.inventory.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {{ request()->routeIs('employee.inventory.*') ? 'bg-[#334155] text-yellow-500' : 'text-gray-300 hover:bg-yellow-600' }} transition-all">
@@ -109,21 +162,18 @@
                             <span class="sidebar-text text-sm font-medium">Inventory</span>
                         </a>
                     </li>
-                    <li>
-                        
-                    </li>
                 </ul>
             </nav>
 
             <!-- Bottom Section -->
-            <div class="px-2 pb-4 border-t border-gray-700 pt-4">
-                <ul class="space-y-1">
+            <div class="employee-bottom border-t border-gray-700">
+                <ul>
                     <li>
-                        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 hover:bg-yellow-600 transition-all">
+                        <a href="{{ route('employee.profile.show') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {{ request()->routeIs('employee.profile.*') ? 'bg-[#334155] text-yellow-500' : 'text-gray-300 hover:bg-yellow-600' }} transition-all">
                             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
-                            <span class="sidebar-text text-sm font-medium">Account</span>
+                            <span class="sidebar-text text-sm font-medium">Profile</span>
                         </a>
                     </li>
                     <li>

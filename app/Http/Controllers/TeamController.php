@@ -21,7 +21,7 @@ class TeamController extends Controller
         $deniedCount = VerificationHistory::where('status', 'Denied')->count();
         $attendanceRecords = AttendanceRecord::with(['teamMember', 'document'])->where('status', 'pending')->get();
         
-        return view('team.index', compact(
+        return view('admin.team.index', compact(
             'teamMembers',
             'projects',
             'verificationHistory',
@@ -42,14 +42,14 @@ class TeamController extends Controller
 
         $teamMembers = $query->orderBy('name')->get();
 
-        return view('team.documents', compact('teamMembers', 'hasUpdateTable'));
+        return view('admin.team.documents', compact('teamMembers', 'hasUpdateTable'));
     }
 
     public function payroll()
     {
         $teamMembers = TeamMember::with('payrollRecords')->get();
         
-        return view('team.payroll', compact('teamMembers'));
+        return view('admin.team.payroll', compact('teamMembers'));
     }
 
     public function assign()
@@ -57,14 +57,14 @@ class TeamController extends Controller
         $projects = Project::with('teamMembers')->get();
         $teamMembers = TeamMember::all();
         
-        return view('team.assign', compact('projects', 'teamMembers'));
+        return view('admin.team.assign', compact('projects', 'teamMembers'));
     }
 
     public function attendance()
     {
         $attendanceRecords = AttendanceRecord::with(['teamMember', 'document'])->where('status', 'pending')->get();
         
-        return view('team.attendance', compact('attendanceRecords'));
+        return view('admin.team.attendance', compact('attendanceRecords'));
     }
 
     public function approveAttendance(Request $request, $id)
@@ -98,12 +98,26 @@ class TeamController extends Controller
     {
         $validated = $request->validate([
             'remarks' => 'required|string',
+            'admin_response_file' => 'nullable|file|max:15360|mimes:jpg,jpeg,png,gif,mp4,pdf,psd,ai,doc,docx,ppt,pptx',
         ]);
 
         $attendance = AttendanceRecord::findOrFail($id);
+
+        $adminResponseName = $attendance->admin_response_name;
+        $adminResponsePath = $attendance->admin_response_path;
+
+        if ($request->hasFile('admin_response_file')) {
+            $file = $request->file('admin_response_file');
+            $storedPath = $file->store('attendance-responses', 'public');
+            $adminResponseName = $file->getClientOriginalName();
+            $adminResponsePath = 'storage/' . ltrim($storedPath, '/');
+        }
+
         $attendance->update([
             'status' => 'denied',
             'remarks' => $validated['remarks'],
+            'admin_response_name' => $adminResponseName,
+            'admin_response_path' => $adminResponsePath,
         ]);
         
         VerificationHistory::create([

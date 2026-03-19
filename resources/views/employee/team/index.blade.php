@@ -1,292 +1,585 @@
-@extends('layouts.app')
+@extends('employee.layouts.app')
 
 @section('content')
 @php
-    $employeeCount = $teamMembers->count();
-    $monthLabel = now()->format('F Y');
-    $yearLabel = now()->format('Y');
+    $memberName = $teamMember?->name ?? auth()->user()->name;
+    $memberRole = $teamMember?->role ?? 'Employee';
+    $memberLocation = $teamMember?->location ?? '-';
+    $memberAvatar = $teamMember?->avatar
+        ? (str_starts_with($teamMember->avatar, 'http') ? $teamMember->avatar : asset(ltrim($teamMember->avatar, '/')))
+        : null;
 
-    $daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    $assignedCount = $assignedProjects->count();
+    $completedCount = (int) ($completedProjectsCount ?? 0);
+
+    $formatCompact = function (float $amount): string {
+        if ($amount >= 1000000) {
+            return rtrim(rtrim(number_format($amount / 1000000, 1, '.', ''), '0'), '.') . 'm';
+        }
+        if ($amount >= 1000) {
+            return rtrim(rtrim(number_format($amount / 1000, 1, '.', ''), '0'), '.') . 'k';
+        }
+        return number_format($amount, 0);
+    };
+
+    $monthlyLabel = $formatCompact((float) ($monthlyIncome ?? 0));
+    $totalLabel = $formatCompact((float) ($totalIncome ?? 0));
+
+    $cardImages = [
+        'linear-gradient(135deg,#8fc54a,#4e8f31)',
+        'linear-gradient(135deg,#7fb4d2,#355f95)',
+        'linear-gradient(135deg,#4f6db5,#f2c23d)',
+        'linear-gradient(135deg,#66b8ee,#2e73b7)',
+        'linear-gradient(135deg,#b08b5e,#8d693e)',
+        'linear-gradient(135deg,#7d9da0,#4a5e5f)',
+        'linear-gradient(135deg,#696969,#3f3f3f)',
+        'linear-gradient(135deg,#6c8f5f,#4f6c45)',
+    ];
 @endphp
 
-<style>
-    #verificationHistoryTable { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) #2b2b2b; }
-    #verificationHistoryTable::-webkit-scrollbar { width: 8px; }
-    #verificationHistoryTable::-webkit-scrollbar-track { background: #2b2b2b; }
-    #verificationHistoryTable::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 999px; border: 2px solid #2b2b2b; }
-    #verificationHistoryTable::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
-</style>
+<div class="min-h-screen bg-[#ECECEC] px-4 py-5 md:px-6 md:py-6">
+    <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <h1 class="text-2xl font-bold text-[#171717] md:text-[28px]">Team Management</h1>
 
-<div class="min-h-screen bg-[#ededed]">
-    <div class="w-full px-6 py-8 lg:px-8 2xl:px-10">
-        <div class="grid grid-cols-12 gap-5">
+        <div class="relative w-full lg:w-[460px]">
+            <input
+                id="teamSearchInput"
+                type="text"
+                placeholder="Search"
+                class="h-10 w-full rounded-full border border-gray-400 bg-[#EDEDED] px-4 pr-10 text-sm text-gray-700 outline-none"
+            >
+            <svg class="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-600" viewBox="0 0 24 24" fill="none">
+                <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2"></path>
+                <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+            </svg>
+        </div>
+    </div>
 
-            <!--left: action cards-->
-            <div class="col-span-12 lg:col-span-3 space-y-5">
-                <!--employee records-->
-                <div class="flex min-h-[210px] flex-col rounded-2xl bg-[#3f3f3f] p-5 shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
-                    <div class="flex items-start gap-4">
-                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2b2b2b]">
-                            <!--iconn linkk-->
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-yellow-400">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25M16.5 7.5V18a2.25 2.25 0 0 0 2.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 0 0 2.25 2.25h13.5M6 7.5h3v3H6v-3Z" />
-                            </svg>
+    @if(session('error'))
+        <div class="mb-3 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700">
+            {{ session('error') }}
+        </div>
+    @endif
 
-                                <path d="M9 12h6" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M9 16h6" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" stroke="#FACC15" stroke-width="2" stroke-linejoin="round"/>
-                            </svg>
+    @if(session('success'))
+        <div class="mb-3 rounded-lg border border-green-300 bg-green-50 px-4 py-2 text-sm text-green-700">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div class="mb-3 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-1">
+            <section class="rounded-xl border border-[#B8BAC5] bg-[#EFEFEF] p-4 shadow-[0_4px_10px_rgba(0,0,0,0.16)]">
+                <div class="mx-auto h-24 w-24 overflow-hidden rounded-full border-2 border-[#F5C400] bg-[#D9D9D9]">
+                    @if($memberAvatar)
+                        <img src="{{ $memberAvatar }}" alt="{{ $memberName }}" class="h-full w-full object-cover">
+                    @else
+                        <div class="flex h-full w-full items-center justify-center text-xl font-semibold text-[#4F4F4F]">
+                            {{ strtoupper(substr($memberName, 0, 2)) }}
                         </div>
-                        <div class="min-w-0">
-                            <h3 class="text-[17px] font-semibold leading-tight text-white pb-5">Employee<br/>Records</h3>
-                            <p class="mt-1 text-[14px] leading-4 text-white/70">View employee records.</p>
-                        </div>
-                    </div>
-
-                    <a href="{{ route('team.documents') }}"
-                       class="mt-auto inline-flex w-full items-center justify-center rounded-lg bg-[#f6c915] px-4 py-2.5 text-[13px] font-semibold text-black shadow-sm hover:brightness-95 transition">
-                        View Documents
-                    </a>
+                    @endif
                 </div>
 
-                <!--payroll-->
-                <div class="flex min-h-[210px] flex-col rounded-2xl bg-[#3f3f3f] p-5 shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
-                    <div class="flex items-start gap-4">
-                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2b2b2b]">
-                            <!--iconn linkk-->
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-yellow-400">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
-                            </svg>
+                <div class="mt-4 text-center text-[24px] font-semibold leading-none text-[#2D3470]">{{ $memberName }}</div>
+                <div class="mt-1 text-center text-sm text-[#4E4E4E]">{{ $memberRole }}</div>
 
-                                <path d="M3 10h18" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M7 15h1" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M11 15h1" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M6 5h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z" stroke="#FACC15" stroke-width="2" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-                        <div class="min-w-0">
-                            <h3 class="text-[17px] font-semibold leading-tight text-white pb-4">Payroll</h3>
-                            <p class="mt-1 text-[14px] leading-4 text-white/70">Review payroll records and <br>verify attendance-based pay <br> for employees.</p>
-                        </div>
-                    </div>
-
-                    <a href="{{ route('team.payroll') }}"
-                       class="mt-auto inline-flex w-full items-center justify-center rounded-lg bg-[#f6c915] px-4 py-2.5 text-[13px] font-semibold text-black shadow-sm hover:brightness-95 transition">
-                        View Payroll
-                    </a>
+                <div class="mt-1 flex items-center justify-center gap-1 text-xs text-[#4E4E4E]">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 13.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="2"></path>
+                        <path d="M19.5 10.5c0 5.25-7.5 11.25-7.5 11.25S4.5 15.75 4.5 10.5a7.5 7.5 0 1 1 15 0Z" stroke="currentColor" stroke-width="2"></path>
+                    </svg>
+                    {{ $memberLocation }}
                 </div>
 
-                <!--project assignment-->
-                <div class="flex min-h-[210px] flex-col rounded-2xl bg-[#3f3f3f] p-5 shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
-                    <div class="flex items-start gap-4">
-                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2b2b2b]">
-                            <!--icon link-->
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-yellow-400">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-                            </svg>
-
-                                <path d="M12 12a4 4 0 1 0-8 0 4 4 0 0 0 8 0Z" stroke="#FACC15" stroke-width="2"/>
-                                <path d="M2 20a6 6 0 0 1 12 0" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M18 8v8" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M14 12h8" stroke="#FACC15" stroke-width="2" stroke-linecap="round"/>
-                            </svg>
-                        </div>
-                        <div class="min-w-0">
-                            <h3 class="text-[17px] font-semibold leading-tight text-white pb-4">Project<br/>Assignment</h3>
-                            <p class="mt-1 text-[14px] leading-4 text-white/70">Assign additional <br>employee to project.</p>
-                        </div>
+                <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                    <div>
+                        <div class="text-3xl font-bold leading-none text-[#111]">{{ $assignedCount }}</div>
+                        <div class="mt-1 text-[11px] text-[#5D5D5D]">Current Projects</div>
                     </div>
-
-                    <a href="{{ route('team.assign') }}"
-                       class="mt-auto inline-flex w-full items-center justify-center rounded-lg bg-[#f6c915] px-4 py-2.5 text-[13px] font-semibold text-black shadow-sm hover:brightness-95 transition">
-                        Assign Roles
-                    </a>
+                    <div>
+                        <div class="text-3xl font-bold leading-none text-[#111]">{{ $monthlyLabel }}</div>
+                        <div class="mt-1 text-[11px] text-[#5D5D5D]">Monthly</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold leading-none text-[#111]">{{ $totalLabel }}</div>
+                        <div class="mt-1 text-[11px] text-[#5D5D5D]">Total Income</div>
+                    </div>
                 </div>
+
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                    <a href="{{ route('employee.profile.show') }}" class="rounded-lg bg-[#F5C400] px-2 py-2 text-center text-xs font-medium text-[#181818]">View Profile</a>
+                    <a href="{{ route('employee.profile.show') }}" class="rounded-lg bg-[#F5C400] px-2 py-2 text-center text-xs font-medium text-[#181818]">Edit Profile</a>
+                </div>
+            </section>
+
+            <section class="relative overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#F1D15D_0%,#F4CC3F_62%,#E8B916_100%)] p-4 shadow-[0_6px_12px_rgba(0,0,0,0.13)]">
+                <div class="pointer-events-none absolute -bottom-16 -right-10 h-40 w-40 rounded-full bg-black/20"></div>
+
+                <div class="text-2xl font-semibold leading-tight text-[#3F3F3F]">Completed Projects</div>
+                <div class="mt-2 text-5xl font-bold leading-none text-[#323232]">{{ $completedCount }}</div>
+
+                <div class="absolute bottom-4 right-4 flex h-20 w-20 items-center justify-center rounded-full border border-[#F5C400] bg-[#2E3138]">
+                    <img src="{{ asset('images/logo-cms.png') }}" alt="Metalift logo" class="h-[58%] w-[58%] object-contain">
+                </div>
+            </section>
+        </div>
+
+        <section class="min-h-[640px] rounded-2xl border border-[#B0B1B3] bg-[#ECECEC] p-3">
+            <div class="flex items-center gap-6 px-1 pb-2">
+                <button type="button" data-tab="submit" class="et-tab-btn border-b-2 border-[#121212] pb-1 text-base font-semibold text-[#121212]">
+                    Submit Report
+                </button>
+                <button type="button" data-tab="submitted" class="et-tab-btn border-b-2 border-transparent pb-1 text-base font-semibold text-[#888888]">
+                    Submitted Report
+                </button>
             </div>
 
-            <!--middle: calendar + verification history-->
-            <div class="col-span-12 lg:col-span-6 space-y-5">
-                <!--calendar-->
-                <div class="rounded-2xl bg-[#3f3f3f] p-5 shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
-                    <div class="relative flex items-center">
-                        <h3 class="text-[18px] font-semibold text-white">Calendar</h3>
-                        <div class="absolute left-1/2 hidden -translate-x-1/2 text-[12px] text-white/65 sm:block">
-                            {{ $monthLabel }}
-                        </div>
-                        <div class="ml-auto flex items-center gap-2">
-                            <div class="rounded-full border border-white/40 px-3 py-1.5 text-[11px] font-semibold text-white/90">
-                                {{ $yearLabel }}
+            <div id="submitPanel" class="px-1 pt-1">
+                <div id="etCards" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    @forelse($assignedProjects as $i => $project)
+                        @php
+                            $latestStatus = $latestStatusByProject[$project->id] ?? null;
+                            $isPending = $latestStatus === 'pending';
+                            $isCompleted = $latestStatus === 'verified';
+                            $imageUrl = $project->image ? asset('storage/' . $project->image) : null;
+                        @endphp
+                        <article
+                            class="rounded-xl border border-[#DDDDDD] bg-[#EEEEEE] p-3 shadow-[0_7px_11px_rgba(0,0,0,0.13)] {{ $isCompleted ? '!bg-[#B7B7B7]' : '' }}"
+                            data-project-card="true"
+                            data-search="{{ strtolower(($project->name ?? '') . ' ' . ($project->type ?? '')) }}"
+                        >
+                            <div class="h-20 overflow-hidden rounded-lg shadow-[0_6px_10px_rgba(0,0,0,0.26)]" style="{{ $imageUrl ? '' : 'background:' . $cardImages[$i % count($cardImages)] . ';' }}">
+                                @if($imageUrl)
+                                    <img src="{{ $imageUrl }}" alt="{{ $project->name }}" class="h-full w-full object-cover">
+                                @endif
                             </div>
-                            <svg class="h-3.5 w-3.5 text-white/70" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-                    </div>
 
-                    <div class="mt-4">
-                        <div class="grid grid-cols-7 text-center">
-                            @foreach($daysOfWeek as $day)
-                                <div class="py-1.5 text-[9px] font-semibold tracking-[0.2em] text-white/60">{{ $day }}</div>
-                            @endforeach
-                        </div>
+                            <div class="mt-3 truncate text-[15px] font-semibold leading-tight text-[#2C2C2C]">{{ $project->name }}</div>
+                            <div class="mt-1 text-xs text-[#424242]">{{ $project->type ?? 'Project' }}</div>
 
-                        <!--simple 5-week grid (visual only, for the design)-->
-                        <div class="grid grid-cols-7 gap-1.5 text-center">
-                            @for($i = 1; $i <= 35; $i++)
-                                @php
-                                    $isToday = $i === (int) now()->format('j');
-                                @endphp
-                                <div class="flex h-8 items-center justify-center rounded-md text-[11px] font-medium
-                                    {{ $isToday ? 'bg-[#f6c915] text-black' : 'text-white/80 hover:bg-white/10' }}">
-                                    {{ $i <= 31 ? $i : '' }}
+                            @if($isCompleted)
+                                <div class="mt-3 inline-flex items-center gap-1 text-xs text-[#202020]">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                        <path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    </svg>
+                                    Completed
                                 </div>
-                            @endfor
+                            @elseif($isPending)
+                                <button type="button" class="mt-3 w-full cursor-not-allowed rounded-lg bg-[#D7D7D7] py-2 text-xs font-medium text-[#4B4B4B]">
+                                    In Progress
+                                </button>
+                            @else
+                                <button
+                                    type="button"
+                                    class="js-open-upload mt-3 w-full rounded-lg bg-[#F5C400] py-2 text-xs font-medium text-[#1A1A1A]"
+                                    data-submit-url="{{ route('employee.team.submit-report', $project->id) }}"
+                                    data-project-name="{{ $project->name }}"
+                                >
+                                    Submit Report
+                                </button>
+                            @endif
+                        </article>
+                    @empty
+                        <div class="col-span-full rounded-lg border border-dashed border-[#ADADAD] px-3 py-6 text-center text-sm text-[#5C5C5C]">
+                            No assigned projects found.
                         </div>
-                    </div>
+                    @endforelse
                 </div>
 
-                <!--report verification history-->
-                <div class="rounded-2xl bg-[#3f3f3f] p-5 shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
-                    <h3 class="text-[18px] font-semibold text-white">Report Verification History</h3>
-
-                    <div id="verificationHistoryTable" class="mt-3 rounded-xl border border-white/10 max-h-[280px] overflow-y-auto">
-                        <table class="w-full">
-                            <thead class="bg-white/5">
-                                <tr class="text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                                    <th class="px-4 py-2.5">Name</th>
-                                    <th class="px-4 py-2.5">Status</th>
-                                    <th class="px-4 py-2.5">Date Submitted</th>
-                                    <th class="px-4 py-2.5">Date Checked</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-white/10">
-                                @forelse($verificationHistory as $history)
-                                    <tr class="hover:bg-white/5 transition">
-                                        <td class="px-4 py-2.5">
-                                            <div class="flex items-center gap-3">
-                                                <div class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#2b2b2b]">
-                                                    <!--temporary ni bai, e replace og image pag fetching na-->
-                                                    <span class="text-[13px] font-semibold text-white">
-                                                        {{ $history->teamMember->initials ?? 'TM' }}
-                                                    </span>
-                                                </div>
-                                                <div class="min-w-0">
-                                                    <div class="truncate text-[13px] font-semibold text-white">
-                                                        {{ $history->teamMember->name ?? 'Unknown' }}
-                                                    </div>
-                                                    <div class="truncate text-[11px] text-white/55">
-                                                        {{ $history->teamMember->role ?? '' }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-2.5">
-                                            @if($history->status === 'Verified')
-                                                <span class="text-[12px] font-semibold text-green-400">Verified</span>
-                                            @else
-                                                <span class="text-[12px] font-semibold text-red-400">Denied</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-4 py-2.5 text-[12px] text-white/80">
-                                            {{ optional($history->date_submitted)->format('m/d/Y') }}
-                                        </td>
-                                        <td class="px-4 py-2.5 text-[12px] text-white/80">
-                                            {{ optional($history->date_checked)->format('m/d/Y') }}
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="4" class="px-4 py-8 text-center text-[12px] text-white/60">No verification history yet.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+                <div id="submitEmpty" class="mt-3 hidden rounded-lg border border-dashed border-[#ADADAD] px-3 py-4 text-center text-sm text-[#5C5C5C]">
+                    No projects match your search.
                 </div>
             </div>
 
-            <!--right: summary cards-->
-            <div class="col-span-12 lg:col-span-3 space-y-5">
-
-                <!--employees card (yellow)-->
-                <div class="relative flex min-h-[210px] flex-col overflow-hidden rounded-2xl bg-[#f4d35e] p-5 shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
-                    <div class="relative z-10">
-                        <div class="text-[18px] font-bold text-[#2b2b2b]">Total Employees</div>
-                        <div class="mt-3 text-5xl font-bold tracking-tight text-[#2b2b2b]">{{ $employeeCount }}</div>
-
-                        <div class="mt-4 flex items-center gap-3 text-[#2b2b2b]">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-10">
-                                <path fill-rule="evenodd" d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z" clip-rule="evenodd" />
-                                <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
-                            </svg>
-
-
-
-                            
-                        </div>
-                    </div>
-
-                    <!--design onli blobs-->
-                    <div class="absolute -bottom-8 -right-12 h-24 w-72 rounded-[999px] bg-[#eab308]/80"></div>
-                    <div class="absolute -bottom-12 right-8 h-16 w-40 rounded-[999px] bg-[#3f3f3f]/50"></div>
-
-                    <!--logo placeholder-->
-                    <div class="absolute right-4 bottom-4 flex h-[140px] w-[140px] items-center justify-center rounded-full ">
-                        <img src="{{ asset('images/logo-cms-circle.png') }}" alt="Logo" class="w-full h-full object-contain"
-                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
-                        <span class="hidden text-[10px] font-bold text-white">METALIFT</span>
-                    </div>
-                </div>
-
-                <!--attendance card-->
-                <div class="flex min-h-[210px] flex-col rounded-2xl bg-[#3f3f3f] p-5 shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <h3 class="text-[18px] font-semibold text-white pb-4">Attendance</h3>
-                            <p class="mt-2 text-[14px] leading-4 text-white/70">Log employee attendance with proof for verification.</p>
-                        </div>
-                        <div class="flex flex-col items-end gap-2">
-                            <!--icon lik-->
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-7 text-yellow-400">
-                                <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
-                                <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
-                            </svg>
-                        </div>
-                    </div>
-
-                    <a href="{{ route('team.attendance') }}"
-                       class="mt-auto inline-flex w-full items-center justify-center rounded-lg bg-[#f6c915] px-4 py-2.5 text-[13px] font-semibold text-black shadow-sm hover:brightness-95 transition">
-                        Record Attendance
-                    </a>
-                </div>
-
-                <!--verification overview-->
-                <div class="relative flex min-h-[210px] flex-col overflow-hidden rounded-2xl bg-[#f4d35e] p-5 shadow-[0_6px_16px_rgba(0,0,0,0.5)]">
-                    <div class="relative z-10">
-                        <h3 class="text-[18px] font-bold text-[#2b2b2b]">Verification Overview</h3>
-
-                        <div class="mt-5 flex flex-col items-center gap-2">
-                            <div class="grid grid-cols-[110px_56px] items-center justify-center gap-2">
-                                <div class="rounded-xl bg-[#3f3f3f] px-4 py-1 text-center text-[20px] font-extrabold text-green-400">Verified</div>
-                                <div class="w-[56px] text-center text-[35px] font-bold text-black">{{ $verifiedCount }}</div>
+            <div id="submittedPanel" class="hidden px-1 pt-1">
+                <div class="rounded-2xl border border-[#4A4A4A] bg-[#3F3F3F] p-2 shadow-[0_10px_16px_rgba(0,0,0,0.22)]">
+                    <div class="overflow-x-auto">
+                        <div class="min-w-[760px]">
+                            <div class="grid grid-cols-12 items-center rounded-lg bg-[#3A3A3A] px-3 py-2 text-sm font-semibold text-white">
+                                <div class="col-span-4">Files/Proof</div>
+                                <div class="col-span-3">Project</div>
+                                <div class="col-span-2">Date</div>
+                                <div class="col-span-2">Status</div>
+                                <div class="col-span-1"></div>
                             </div>
-                            <div class="grid grid-cols-[110px_56px] items-center justify-center gap-2">
-                                <div class="rounded-xl bg-[#3f3f3f] px-5 py-1 text-center text-[20px] font-extrabold text-red-400">Denied</div>
-                                <div class="w-[56px] text-center text-[35px] font-bold text-black">{{ $deniedCount }}</div>
+
+                            <div class="max-h-[470px] overflow-y-auto pr-1">
+                        @forelse($submittedReports as $row)
+                            @php
+                                $fileName = $row->document?->name ?? 'No file';
+                                $status = $row->status;
+                                $isRejected = $status === 'denied';
+                                $isProgress = $status === 'pending';
+                                $isApproved = $status === 'verified';
+                                $remarks = trim((string) ($row->remarks ?? ''));
+
+                                $adminResponseUrl = null;
+                                if ($row->admin_response_path) {
+                                    $adminResponseUrl = str_starts_with($row->admin_response_path, 'http')
+                                        ? $row->admin_response_path
+                                        : asset(ltrim($row->admin_response_path, '/'));
+                                }
+                            @endphp
+                            <div
+                                class="grid grid-cols-12 items-center border-b border-[#474747] px-3 py-2.5 text-sm {{ $isRejected ? 'bg-[#5A3F3F]/80' : 'bg-[#3F3F3F]' }}"
+                                data-report-row="true"
+                                data-search="{{ strtolower($fileName . ' ' . ($row->project ?? '') . ' ' . optional($row->date)->format('m-d-y') . ' ' . $status) }}"
+                            >
+                                <div class="col-span-4 flex items-center gap-3 text-[#ECECEC]">
+                                    <div class="relative h-8 w-7 overflow-hidden rounded-[2px] bg-white">
+                                        <div class="absolute right-0 top-0 h-2 w-2 bg-[#DBDBDB] [clip-path:polygon(0_0,100%_100%,0_100%)]"></div>
+                                        <div class="absolute bottom-0 left-0 right-0 bg-[#EF4444] py-[1px] text-center text-[8px] font-bold text-white">PDF</div>
+                                    </div>
+                                    <span class="truncate">{{ $fileName }}</span>
+                                </div>
+
+                                <div class="col-span-3 truncate text-[#EDEDED]">{{ $row->project ?? '-' }}</div>
+                                <div class="col-span-2 text-[#DFDFDF]">{{ optional($row->date)->format('m-d-y') }}</div>
+
+                                <div class="col-span-2">
+                                    @if($isProgress)
+                                        <span class="inline-flex min-w-[96px] items-center justify-center rounded-md bg-[#4338CA] px-3 py-1 text-[13px] font-medium text-white">In Progress</span>
+                                    @elseif($isRejected)
+                                        <span class="inline-flex min-w-[96px] items-center justify-center rounded-md bg-[#FCA5A5] px-3 py-1 text-[13px] font-semibold text-[#DC2626]">Rejected</span>
+                                    @elseif($isApproved)
+                                        <span class="inline-flex min-w-[96px] items-center justify-center rounded-md bg-[#43A85D] px-3 py-1 text-[13px] font-medium text-white">Approved</span>
+                                    @endif
+                                </div>
+
+                                <div class="col-span-1 flex justify-center">
+                                    @if($isRejected)
+                                        <button
+                                            type="button"
+                                            class="js-view-reject text-[13px] font-semibold text-[#FF5E5E]"
+                                            data-remarks="{{ e($remarks) }}"
+                                            data-response-url="{{ $adminResponseUrl ?? '' }}"
+                                            data-response-name="{{ e((string) ($row->admin_response_name ?? '')) }}"
+                                        >
+                                            VIEW
+                                        </button>
+                                    @elseif($isProgress)
+                                        <span class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#4F46E5] text-[#4F46E5]">
+                                            <span class="h-2 w-2 rounded-full bg-[#4F46E5]"></span>
+                                        </span>
+                                    @elseif($isApproved)
+                                        <span class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[#4FB56A] text-[#4FB56A]">
+                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                                <path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            </svg>
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                        @empty
+                            <div class="px-3 py-6 text-center text-sm text-[#DFDFDF]">No submitted reports yet.</div>
+                        @endforelse
                             </div>
                         </div>
                     </div>
-
-                    <!--decorative yellow swoosh-ish-->
-                    <div class="absolute -bottom-6 -left-12 h-20 w-64 rounded-[999px] bg-[#3f3f3f]/50"></div>
-                    <div class="absolute -bottom-10 left-6 h-28 w-80 rounded-[999px] bg-[#eab308]/60"></div>
-
-                    
                 </div>
 
+                <div id="submittedEmpty" class="mt-3 hidden rounded-lg border border-dashed border-[#ADADAD] px-3 py-4 text-center text-sm text-[#5C5C5C]">
+                    No submitted reports match your search.
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div id="uploadModal" class="fixed inset-0 z-[120] hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/35 backdrop-blur-[5px]" data-close-upload="1"></div>
+
+    <div class="relative z-10 flex min-h-full items-center justify-center p-4">
+        <form id="uploadForm" method="POST" enctype="multipart/form-data" class="relative w-[calc(100vw-34px)] max-w-[392px] rounded-[4px] bg-[#F8F8F8] p-4 shadow-[0_14px_22px_rgba(0,0,0,0.2)]">
+            @csrf
+
+            <button type="button" class="absolute right-2 top-2 h-7 w-7 rounded-full border border-[#BEBEBE] bg-white text-sm text-[#4B4B4B]" data-close-upload="1">
+                &times;
+            </button>
+            <div class="mb-3 text-center text-[24px] font-semibold leading-none text-[#181818]">Upload</div>
+            <div id="uploadProjectLabel" class="mb-3 text-center text-xs text-[#5D5D5D]"></div>
+
+            <input id="reportFileInput" type="file" name="report_file" required class="hidden" accept=".jpg,.jpeg,.png,.gif,.mp4,.pdf,.psd,.ai,.doc,.docx,.ppt,.pptx">
+
+            <div id="dropZone" class="flex min-h-[286px] flex-col items-center justify-center gap-2 rounded-[2px] border border-dashed border-[#CDD2F2] bg-[#F4F5FB] px-4 py-7 text-center">
+                <svg class="h-12 w-12 text-[#E2B500]" viewBox="0 0 24 24" fill="none">
+                    <path d="M7 18.5A5.5 5.5 0 1 1 8.8 7.8a6.5 6.5 0 0 1 12.2 2.8A4.4 4.4 0 0 1 19 19H7Z" stroke="currentColor" stroke-width="1.8"></path>
+                    <path d="M12 16V10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                    <path d="m9.75 12.25 2.25-2.25 2.25 2.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+
+                <div class="pt-1 text-[16px] font-medium leading-tight text-[#1E1E1E]">
+                    Drag &amp; drop files or
+                    <button type="button" id="browseBtn" class="text-[16px] font-medium text-[#CCA300] underline">Browse</button>
+                </div>
+
+                <div class="text-[10px] text-[#8A8A8A]">Supported formats: JPEG, PNG, GIF, MP4, PDF, PSD, AI, Word, PPT</div>
+                <div id="selectedFileName" class="mt-1 max-w-[95%] truncate text-[11px] text-[#4B4B4B]">No file selected.</div>
             </div>
 
+            <button type="submit" id="submitFileBtn" class="mt-4 w-full rounded-[4px] bg-[#F0D878] py-2.5 text-[13px] font-medium tracking-[0.01em] text-[#545454]">
+                SUBMIT FILE
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="confirmModal" class="fixed inset-0 z-[120] hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/35 backdrop-blur-[4px]" data-close-confirm="1"></div>
+    <div class="relative mx-auto mt-20 w-[calc(100vw-28px)] max-w-[350px] overflow-hidden rounded-[20px] border border-[#2A2A2A] shadow-[0_18px_26px_rgba(0,0,0,0.26)]">
+        <div class="relative bg-[#3E3E40] px-4 pb-16 pt-5 text-center text-[#F7F7F7]">
+            <div class="mx-auto mb-3 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-[#F5C400] bg-[#212227]">
+                <img src="{{ asset('images/logo-cms.png') }}" alt="Metalift logo" class="h-[78%] w-[78%] object-contain">
+            </div>
+            <div class="text-[28px] font-normal leading-none">Report Submitted</div>
+            <div class="absolute bottom-5 right-5 flex h-7 w-7 items-center justify-center rounded-full bg-[#F5C400] text-sm font-bold text-[#1F1F1F] shadow-[0_4px_9px_rgba(0,0,0,0.35)]">&#10003;</div>
+        </div>
+
+        <div class="bg-[#F4F4F4] px-4 pb-4 pt-3">
+            <div class="mb-3 text-sm leading-relaxed text-[#252525]">It will now be forwarded to the team management for approval.</div>
+            <button type="button" class="w-full rounded-[10px] bg-[#F5C400] py-2 text-sm font-semibold text-[#171717]" data-close-confirm="1">Close</button>
         </div>
     </div>
 </div>
+
+<div id="rejectDetailsModal" class="fixed inset-0 z-[120] hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/35 backdrop-blur-[4px]" data-close-reject-details="1"></div>
+    <div class="relative mx-auto mt-24 w-[calc(100vw-28px)] max-w-[420px] overflow-hidden rounded-2xl border border-[#C7C7C7] bg-white shadow-[0_16px_26px_rgba(0,0,0,0.22)]">
+        <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+            <div class="text-sm font-semibold text-[#1E1E1E]">Rejected Report Details</div>
+            <button type="button" class="text-lg text-[#6A6A6A]" data-close-reject-details="1">&times;</button>
+        </div>
+        <div class="space-y-3 px-4 py-4">
+            <div>
+                <div class="mb-1 text-xs font-semibold text-[#4B4B4B]">Remarks</div>
+                <div id="rejectRemarksText" class="rounded-md bg-[#F5F5F5] px-3 py-2 text-sm text-[#3A3A3A]">No remarks provided.</div>
+            </div>
+            <div id="rejectFileWrap" class="hidden">
+                <div class="mb-1 text-xs font-semibold text-[#4B4B4B]">Admin Attachment</div>
+                <a id="rejectFileLink" href="#" target="_blank" class="inline-flex items-center gap-2 rounded-md bg-[#F5C400] px-3 py-2 text-xs font-semibold text-[#1E1E1E]">
+                    Open Attached File
+                </a>
+                <div id="rejectFileName" class="mt-1 text-xs text-gray-600"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const tabs = Array.from(document.querySelectorAll('.et-tab-btn'));
+        const cards = Array.from(document.querySelectorAll('[data-project-card="true"]'));
+        const reportRows = Array.from(document.querySelectorAll('[data-report-row="true"]'));
+        const searchInput = document.getElementById('teamSearchInput');
+
+        const submitPanel = document.getElementById('submitPanel');
+        const submittedPanel = document.getElementById('submittedPanel');
+        const submitEmpty = document.getElementById('submitEmpty');
+        const submittedEmpty = document.getElementById('submittedEmpty');
+
+        let activeTab = 'submit';
+
+        const setTabActive = (tab, active) => {
+            tab.classList.toggle('text-[#121212]', active);
+            tab.classList.toggle('border-[#121212]', active);
+            tab.classList.toggle('text-[#888888]', !active);
+            tab.classList.toggle('border-transparent', !active);
+        };
+
+        const switchPanels = () => {
+            const isSubmit = activeTab === 'submit';
+            submitPanel.classList.toggle('hidden', !isSubmit);
+            submittedPanel.classList.toggle('hidden', isSubmit);
+        };
+
+        const filterSubmit = (q) => {
+            let visible = 0;
+            cards.forEach((card) => {
+                const text = (card.dataset.search || '').toLowerCase();
+                const show = text.includes(q);
+                card.style.display = show ? '' : 'none';
+                if (show) visible += 1;
+            });
+            submitEmpty.classList.toggle('hidden', visible > 0);
+        };
+
+        const filterSubmitted = (q) => {
+            let visible = 0;
+            reportRows.forEach((row) => {
+                const text = (row.dataset.search || '').toLowerCase();
+                const show = text.includes(q);
+                row.style.display = show ? '' : 'none';
+                if (show) visible += 1;
+            });
+            submittedEmpty.classList.toggle('hidden', visible > 0);
+        };
+
+        const applyFilters = () => {
+            const q = (searchInput?.value || '').toLowerCase().trim();
+            if (activeTab === 'submit') {
+                filterSubmit(q);
+            } else {
+                filterSubmitted(q);
+            }
+        };
+
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                activeTab = tab.dataset.tab || 'submit';
+                tabs.forEach((t) => setTabActive(t, t === tab));
+                switchPanels();
+                applyFilters();
+            });
+        });
+
+        switchPanels();
+        applyFilters();
+        searchInput?.addEventListener('input', applyFilters);
+
+        const uploadModal = document.getElementById('uploadModal');
+        const confirmModal = document.getElementById('confirmModal');
+        const rejectDetailsModal = document.getElementById('rejectDetailsModal');
+
+        const uploadForm = document.getElementById('uploadForm');
+        const openUploadButtons = document.querySelectorAll('.js-open-upload');
+        const closeUploadButtons = document.querySelectorAll('[data-close-upload="1"]');
+        const closeConfirmButtons = document.querySelectorAll('[data-close-confirm="1"]');
+        const closeRejectDetailsButtons = document.querySelectorAll('[data-close-reject-details="1"]');
+
+        const reportFileInput = document.getElementById('reportFileInput');
+        const browseBtn = document.getElementById('browseBtn');
+        const selectedFileName = document.getElementById('selectedFileName');
+        const dropZone = document.getElementById('dropZone');
+        const uploadProjectLabel = document.getElementById('uploadProjectLabel');
+
+        const rejectRemarksText = document.getElementById('rejectRemarksText');
+        const rejectFileWrap = document.getElementById('rejectFileWrap');
+        const rejectFileLink = document.getElementById('rejectFileLink');
+        const rejectFileName = document.getElementById('rejectFileName');
+
+        const lockBody = () => {
+            const hasOpen = !uploadModal.classList.contains('hidden')
+                || !confirmModal.classList.contains('hidden')
+                || !rejectDetailsModal.classList.contains('hidden');
+            document.body.classList.toggle('overflow-hidden', hasOpen);
+        };
+
+        const setSelectedFile = () => {
+            selectedFileName.textContent = reportFileInput?.files?.[0]?.name || 'No file selected.';
+        };
+
+        const openUpload = (button) => {
+            reportFileInput.value = '';
+            setSelectedFile();
+
+            const submitUrl = button.getAttribute('data-submit-url') || '';
+            const projectName = button.getAttribute('data-project-name') || '';
+            uploadForm.action = submitUrl;
+            uploadProjectLabel.textContent = projectName ? `Project: ${projectName}` : '';
+
+            uploadModal.classList.remove('hidden');
+            lockBody();
+        };
+
+        const closeUpload = () => {
+            uploadModal.classList.add('hidden');
+            lockBody();
+        };
+
+        const openConfirm = () => {
+            confirmModal.classList.remove('hidden');
+            lockBody();
+        };
+
+        const closeConfirm = () => {
+            confirmModal.classList.add('hidden');
+            lockBody();
+        };
+
+        const openRejectDetails = (button) => {
+            const remarks = button.getAttribute('data-remarks') || '';
+            const responseUrl = button.getAttribute('data-response-url') || '';
+            const responseName = button.getAttribute('data-response-name') || '';
+
+            rejectRemarksText.textContent = remarks !== '' ? remarks : 'No remarks provided.';
+
+            if (responseUrl !== '') {
+                rejectFileWrap.classList.remove('hidden');
+                rejectFileLink.href = responseUrl;
+                rejectFileName.textContent = responseName !== '' ? responseName : '';
+            } else {
+                rejectFileWrap.classList.add('hidden');
+                rejectFileLink.removeAttribute('href');
+                rejectFileName.textContent = '';
+            }
+
+            rejectDetailsModal.classList.remove('hidden');
+            lockBody();
+        };
+
+        const closeRejectDetails = () => {
+            rejectDetailsModal.classList.add('hidden');
+            lockBody();
+        };
+
+        openUploadButtons.forEach((button) => {
+            button.addEventListener('click', () => openUpload(button));
+        });
+        closeUploadButtons.forEach((button) => button.addEventListener('click', closeUpload));
+        closeConfirmButtons.forEach((button) => button.addEventListener('click', closeConfirm));
+        closeRejectDetailsButtons.forEach((button) => button.addEventListener('click', closeRejectDetails));
+
+        document.querySelectorAll('.js-view-reject').forEach((button) => {
+            button.addEventListener('click', () => openRejectDetails(button));
+        });
+
+        browseBtn?.addEventListener('click', () => reportFileInput?.click());
+        reportFileInput?.addEventListener('change', setSelectedFile);
+
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            dropZone?.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                dropZone.classList.remove('border-[#CDD2F2]', 'bg-[#F4F5FB]');
+                dropZone.classList.add('border-[#E2B500]', 'bg-[#FFFCE8]');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach((eventName) => {
+            dropZone?.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                dropZone.classList.remove('border-[#E2B500]', 'bg-[#FFFCE8]');
+                dropZone.classList.add('border-[#CDD2F2]', 'bg-[#F4F5FB]');
+            });
+        });
+
+        dropZone?.addEventListener('drop', (event) => {
+            const files = event.dataTransfer?.files;
+            if (!files || !files.length) return;
+
+            try {
+                reportFileInput.files = files;
+                setSelectedFile();
+            } catch (_) {}
+        });
+
+        uploadForm?.addEventListener('submit', () => {
+            const submitBtn = document.getElementById('submitFileBtn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Submitting...';
+            }
+        });
+
+        const shouldOpenConfirm = @json((bool) session('report_submitted'));
+        if (shouldOpenConfirm) {
+            openConfirm();
+        }
+    })();
+</script>
 @endsection

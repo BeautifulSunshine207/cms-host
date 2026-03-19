@@ -32,7 +32,7 @@ class InventoryController extends Controller
         
         $totalMaterials = Material::where('is_active', 1)->count();
 
-        return view('inventory.index', compact('materials', 'totalMaterials'));
+        return view('admin.inventory.index', compact('materials', 'totalMaterials'));
     }
 
     public function stockInOut(Request $request)
@@ -56,7 +56,7 @@ class InventoryController extends Controller
     //dummy data ra ni bai
     $topMaterials = collect([]);
 
-    return view('inventory.stock-inout', compact('materials', 'projects', 'totalMaterials', 'topMaterials'));
+    return view('admin.inventory.stock-inout', compact('materials', 'projects', 'totalMaterials', 'topMaterials'));
 }
 
     public function threshold(Request $request)
@@ -75,7 +75,7 @@ class InventoryController extends Controller
 
         $materials = $query->orderBy('material_name')->get();
 
-        return view('inventory.threshold', compact('materials'));
+        return view('admin.inventory.threshold', compact('materials'));
     }
 
     public function history(Request $request)
@@ -97,7 +97,7 @@ class InventoryController extends Controller
 
         $transactions = $query->get();
 
-        return view('inventory.history', compact('transactions'));
+        return view('admin.inventory.history', compact('transactions'));
     }
 
     public function lowStock()

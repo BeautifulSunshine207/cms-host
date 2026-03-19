@@ -12,10 +12,13 @@ class AttendanceRecord extends Model
     protected $fillable = [
         'team_member_id',
         'document_id',
+        'project_id',
         'project',
         'date',
         'status',
         'remarks',
+        'admin_response_name',
+        'admin_response_path',
     ];
 
     protected $casts = [
@@ -30,5 +33,10 @@ class AttendanceRecord extends Model
     public function document()
     {
         return $this->belongsTo(Document::class);
+    }
+
+    public function projectItem()
+    {
+        return $this->belongsTo(Project::class, 'project_id');
     }
 }
