@@ -31,26 +31,11 @@
         </div>
 
         <!--serch bar (rigt side)-->
-        <div class="w-[480px] max-w-full">
-            <div class="relative">
-                <input
-                    id="{{ $selectedProject ? 'employeeSearch' : 'projectSearch' }}"
-                    type="text"
-                    placeholder="Search"
-                    class="w-full rounded-full border border-gray-400 bg-[#EDEDED] px-5 py-2 pr-12 text-sm outline-none"
-                >
-                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600">
-                    <!--magnefier-->
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                        <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2"/>
-                        <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                </div>
-            </div>
-        </div>
+        
     </div>
 
-    <!--flash messages-->
+    <!--flash messages
+    -->
     @if(session('success'))
         <div class="mb-6 rounded-xl bg-green-50 border border-green-200 text-green-800 px-4 py-3">
             {{ session('success') }}
@@ -86,7 +71,8 @@
                         }
                     }
                     $progress = $p->progress ?? $p->progress_percentage ?? null; //<!--aint final-->
-                    $isCompleted = (strtolower($p->status ?? '') === 'completed');
+                    $progressValue = (int) ($p->progress ?? $p->progress_percentage ?? 0);
+                    $isCompleted = $progressValue >= 100 || (strtolower((string) ($p->status ?? '')) === 'completed');
                 @endphp
 
                 <a

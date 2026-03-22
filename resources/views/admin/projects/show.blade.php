@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $displayProgress = max(0, min(100, (int) ($project->progress ?? 0)));
+    $displayStatus = $displayProgress >= 100 ? 'completed' : ($displayProgress <= 0 ? 'pending' : 'ongoing');
+@endphp
 <style>
     .print-only { display: none; }
     .screen-only { display: block; }
@@ -13,6 +17,7 @@
     .project-scroll::-webkit-scrollbar-track { background: #3f3f3f; }
     .project-scroll::-webkit-scrollbar-thumb { background: #5a5a5a; border-radius: 999px; border: 2px solid #3f3f3f; }
     .project-scroll::-webkit-scrollbar-thumb:hover { background: #6a6a6a; }
+
 
     @media print {
         .screen-only { display: none !important; }
@@ -113,8 +118,8 @@
                     <div class="print-line"><span class="label">Location</span>: <span class="value">{{ $project->location }}</span></div>
                     <div class="print-line"><span class="label">Start Date</span>: <span class="value">{{ optional($project->start_date)->format('F d, Y') ?? '-' }}</span></div>
                     <div class="print-line"><span class="label">Expected End Date</span>: <span class="value">{{ optional($project->end_date)->format('F d, Y') ?? '-' }}</span></div>
-                    <div class="print-line"><span class="label">Status</span>: <span class="value">{{ ucfirst($project->status ?? 'pending') }}</span></div>
-                    <div class="print-line"><span class="label">Progress</span>: <span class="value">{{ $project->progress ?? 0 }}%</span></div>
+                    <div class="print-line"><span class="label">Status</span>: <span class="value">{{ ucfirst($displayStatus) }}</span></div>
+                    <div class="print-line"><span class="label">Progress</span>: <span class="value">{{ $displayProgress }}%</span></div>
                 </div>
             </div>
             <div class="print-image">
@@ -150,8 +155,8 @@
                             {{ rtrim(rtrim(number_format((float) $row->quantity, 2, '.', ''), '0'), '.') }}
                             {{ $row->material?->unit_of_measure ?? '' }}
                         </td>
-                        <td>₱{{ number_format((float) ($row->unit_price ?? 0), 2) }}</td>
-                        <td>₱{{ number_format((float) ($row->total ?? 0), 2) }}</td>
+                        <td>&#8369;{{ number_format((float) ($row->unit_price ?? 0), 2) }}</td>
+                        <td>&#8369;{{ number_format((float) ($row->total ?? 0), 2) }}</td>
                         <td>{{ $row->last_used ? $row->last_used->format('m-d-y') : '-' }}</td>
                     </tr>
                 @empty
@@ -161,7 +166,7 @@
                 @endforelse
             </tbody>
         </table>
-        <div class="print-overall">Overall Total: ₱{{ number_format((float) ($projectMaterialsTotal ?? 0), 2) }}</div>
+        <div class="print-overall">Overall Total: &#8369;{{ number_format((float) ($projectMaterialsTotal ?? 0), 2) }}</div>
 
         <div class="print-section-title" style="margin-top: 18pt;">Assigned Team</div>
         <table class="print-table">
@@ -199,7 +204,8 @@
 
             <div class="grid grid-cols-1 md:grid-cols-5">
 
-                <!--LEFT PANEL-->
+                <!--LEFT PANEL
+                -->
                 <div class="md:col-span-2 bg-yellow-500/25 p-5 text-white relative ">
                     <div class="flex items-start justify-between gap-3">
                         <div>
@@ -355,21 +361,21 @@
                             <div class="px-4 py-2 rounded-lg bg-black/30 border border-white/10">
                                 <span class="text-xs text-white/60">Status:</span>
                                 <span class="ml-2 text-sm font-semibold text-white">
-                                    {{ ucfirst($project->status ?? 'pending') }}
+                                    {{ ucfirst($displayStatus) }}
                                 </span>
                             </div>
 
                             <div class="px-4 py-2 rounded-lg bg-black/30 border border-white/10">
                                 <span class="text-xs text-white/60">Progress:</span>
                                 <span class="ml-2 text-sm font-semibold text-yellow-300">
-                                    {{ $project->progress ?? 0 }}%
+                                    {{ $displayProgress }}%
                                 </span>
                             </div>
 
                             <div class="px-4 py-2 rounded-lg bg-black/30 border border-white/10 ml-auto">
                                 <span class="text-xs text-white/60">Total:</span>
                                 <span class="ml-2 text-sm font-semibold text-yellow-300">
-                                    ₱{{ number_format((float) ($projectMaterialsTotal ?? 0), 2) }}
+                                    &#8369;{{ number_format((float) ($projectMaterialsTotal ?? 0), 2) }}
                                 </span>
                             </div>
                         </div>
@@ -409,10 +415,10 @@
                                                     {{ $row->material?->unit_of_measure ?? '' }}
                                                 </td>
                                                 <td class="px-6 py-3 text-sm text-white/80">
-                                                    ₱{{ number_format((float) ($row->unit_price ?? 0), 2) }}
+                                                    &#8369;{{ number_format((float) ($row->unit_price ?? 0), 2) }}
                                                 </td>
                                                 <td class="px-6 py-3 text-sm text-white/80">
-                                                    ₱{{ number_format((float) ($row->total ?? 0), 2) }}
+                                                    &#8369;{{ number_format((float) ($row->total ?? 0), 2) }}
                                                 </td>
                                                 <td class="px-6 py-3 text-sm text-white/80">
                                                     {{ $row->last_used ? $row->last_used->format('m-d-y') : '-' }}

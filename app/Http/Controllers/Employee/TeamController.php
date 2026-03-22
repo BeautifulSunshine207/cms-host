@@ -46,11 +46,10 @@ class TeamController extends Controller
                     return [$row->project_id => $row->status];
                 });
 
-            $completedProjectsCount = $submittedReports
-                ->where('status', 'verified')
-                ->pluck('project_id')
-                ->filter()
-                ->unique()
+            $completedProjectsCount = $assignedProjects
+                ->filter(function ($project) {
+                    return (int) ($project->progress ?? 0) >= 100;
+                })
                 ->count();
 
             $monthlyIncome = $this->parseMoney($teamMember->salary);

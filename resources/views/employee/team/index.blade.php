@@ -76,7 +76,7 @@
     <div class="grid grid-cols-1 gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-1">
             <section class="rounded-xl border border-[#B8BAC5] bg-[#EFEFEF] p-4 shadow-[0_4px_10px_rgba(0,0,0,0.16)]">
-                <div class="mx-auto h-24 w-24 overflow-hidden rounded-full border-2 border-[#F5C400] bg-[#D9D9D9]">
+                <div class="mx-auto h-24 w-24 overflow-hidden rounded-full border-2 border-gray-300 bg-[#D9D9D9]">
                     @if($memberAvatar)
                         <img src="{{ $memberAvatar }}" alt="{{ $memberName }}" class="h-full w-full object-cover">
                     @else
@@ -124,8 +124,8 @@
                 <div class="text-2xl font-semibold leading-tight text-[#3F3F3F]">Completed Projects</div>
                 <div class="mt-2 text-5xl font-bold leading-none text-[#323232]">{{ $completedCount }}</div>
 
-                <div class="absolute bottom-4 right-4 flex h-20 w-20 items-center justify-center rounded-full border border-[#F5C400] bg-[#2E3138]">
-                    <img src="{{ asset('images/logo-cms.png') }}" alt="Metalift logo" class="h-[58%] w-[58%] object-contain">
+                <div class="absolute bottom-4 right-4 flex h-20 w-20 items-center justify-center rounded-full bg-[#2E3138]">
+                    <img src="{{ asset('images/logo-cms-circle.png') }}" alt="Metalift logo" class="h-[58%] w-[58%] object-contain">
                 </div>
             </section>
         </div>
@@ -145,8 +145,10 @@
                     @forelse($assignedProjects as $i => $project)
                         @php
                             $latestStatus = $latestStatusByProject[$project->id] ?? null;
-                            $isPending = $latestStatus === 'pending';
-                            $isCompleted = $latestStatus === 'verified';
+                            $projectProgress = (int) ($project->progress ?? 0);
+                            $isCompleted = $projectProgress >= 100
+                                || strtolower((string) ($project->status ?? '')) === 'completed';
+                            $isPending = ! $isCompleted && $latestStatus === 'pending';
                             $imageUrl = $project->image ? asset('storage/' . $project->image) : null;
                         @endphp
                         <article
@@ -335,7 +337,7 @@
     <div class="relative mx-auto mt-20 w-[calc(100vw-28px)] max-w-[350px] overflow-hidden rounded-[20px] border border-[#2A2A2A] shadow-[0_18px_26px_rgba(0,0,0,0.26)]">
         <div class="relative bg-[#3E3E40] px-4 pb-16 pt-5 text-center text-[#F7F7F7]">
             <div class="mx-auto mb-3 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-[#F5C400] bg-[#212227]">
-                <img src="{{ asset('images/logo-cms.png') }}" alt="Metalift logo" class="h-[78%] w-[78%] object-contain">
+                <img src="{{ asset('images/logo-cms-circle.png') }}" alt="Metalift logo" class="h-[78%] w-[78%] object-contain">
             </div>
             <div class="text-[28px] font-normal leading-none">Report Submitted</div>
             <div class="absolute bottom-5 right-5 flex h-7 w-7 items-center justify-center rounded-full bg-[#F5C400] text-sm font-bold text-[#1F1F1F] shadow-[0_4px_9px_rgba(0,0,0,0.35)]">&#10003;</div>

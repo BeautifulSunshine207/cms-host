@@ -129,7 +129,7 @@ class MaterialController extends Controller
         return redirect()->route('materials.create')->with('success', 'supplier added');
     }
 
-    // add to cart (session)
+    //add to cart (session)
     public function cartAdd(Request $request)
     {
         $data = $request->validate([
@@ -143,7 +143,7 @@ class MaterialController extends Controller
 
         $cart = session()->get('mms_cart', []);
 
-        // key: supplier_id:product_id
+        //key: supplier_id:product_id
         $key = $data['supplier_id'] . ':' . $data['product_id'];
 
         $cart[$key] = [
@@ -160,7 +160,7 @@ class MaterialController extends Controller
         return back()->with('success', 'added to cart');
     }
 
-    // remove from cart
+    //remove from cart
     public function cartRemove(Request $request)
     {
         $data = $request->validate([
@@ -174,14 +174,14 @@ class MaterialController extends Controller
         return back()->with('success', 'removed');
     }
 
-    // view cart page (the modal style page)
+    //view cart page (the modal style page)
     public function cartView()
     {
         $cart = session()->get('mms_cart', []);
         return view('admin.materials.cart', compact('cart'));
     }
 
-    // create materials from cart then also create inventory rows
+    //create materials from cart then also create inventory rows
     public function cartCheckout(Request $request)
     {
         $cart = session()->get('mms_cart', []);
@@ -192,7 +192,9 @@ class MaterialController extends Controller
 
         DB::transaction(function () use ($cart) {
             foreach ($cart as $item) {
-                // create material
+              
+            
+            // create material
                 $material = Material::create([
                     'material_name'   => $item['product_name'],
                     'unit_of_measure' => $item['unit_of_measure'],

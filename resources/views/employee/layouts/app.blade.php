@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
@@ -64,7 +64,8 @@
         }
 
         .employee-bottom {
-            padding: 18px 14px 20px;
+            padding: 8px 14px 20px;
+            margin-bottom: 40px;
         }
 
         .employee-bottom ul {
@@ -79,6 +80,33 @@
         
         .main-collapsed {
             margin-left: 4rem;
+        }
+
+        .employee-collapsed-toggle {
+            display: none;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 9999px;
+            background: #f6c915;
+            color: #1f2937;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #sidebar.sidebar-collapsed .employee-top-toggle {
+            display: none;
+        }
+
+        #sidebar.sidebar-collapsed .employee-logo-circle {
+            display: none;
+        }
+
+        #sidebar.sidebar-collapsed .employee-logo-block {
+            justify-content: center;
+        }
+
+        #sidebar.sidebar-collapsed .employee-collapsed-toggle {
+            display: inline-flex;
         }
 
         @media print {
@@ -111,7 +139,7 @@
         <aside id="sidebar" class="fixed left-0 top-0 h-screen w-56 bg-[#3C3C3C] flex flex-col z-50 transition-all duration-300">
             <div class="employee-sidebar-header">
                 <span class="sidebar-text employee-sidebar-title">EMPLOYEE</span>
-                <button onclick="toggleSidebar()" class="text-gray-300 hover:text-white transition-colors">
+                <button onclick="toggleSidebar()" class="employee-top-toggle text-gray-300 hover:text-white transition-colors" aria-label="Toggle sidebar">
                     <svg class="w-5 h-5 collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
@@ -129,6 +157,11 @@
                         class="w-full h-full object-cover"
                     >
                 </div>
+                <button type="button" onclick="toggleSidebar()" class="employee-collapsed-toggle" aria-label="Expand sidebar">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16" />
+                    </svg>
+                </button>
                 <div class="sidebar-text employee-logo-text">
                     <span class="text-white font-bold text-sm tracking-wide">METALIFT</span>
                     <p class="text-gray-300 text-xs">Construction</p>
@@ -234,3 +267,4 @@
     @stack('scripts')
 </body>
 </html>
+

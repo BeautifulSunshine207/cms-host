@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InventoryTransaction;
 use App\Models\Project;
 use App\Models\TeamMember;
-use App\Models\InventoryTransaction;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
@@ -12,56 +12,56 @@ class ProjectController extends Controller
     public function index(Request $request)
     {
         $query = Project::with('teamMembers');
-        
+
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('type', 'like', "%{$search}%");
+                    ->orWhere('type', 'like', "%{$search}%");
             });
         }
-        
+
         $projects = $query->get();
-        
+
         return view('admin.projects.index', compact('projects'));
     }
 
     public function show($id)
-        {
-            $project = Project::with(['teamMembers' => function ($q) {
-                $q->orderBy('name'); // optional
-            }])->findOrFail($id);
+    {
+        $project = Project::with(['teamMembers' => function ($q) {
+            $q->orderBy('name');
+        }])->findOrFail($id);
 
-            $projectMaterials = InventoryTransaction::with('material')
-                ->where('project_id', $project->id)
-                ->where('type', 'stock_out')
-                ->get()
-                ->groupBy('material_id')
-                ->map(function ($rows) {
-                    $first = $rows->first();
-                    $qty = $rows->sum(function ($row) {
-                        return (float) $row->quantity;
-                    });
-                    $lastUsed = $rows->sortByDesc('created_at')->first()?->created_at;
-                    $unitPrice = (float) ($first?->material?->unit_price ?? 0);
-                    $rowTotal = $qty * $unitPrice;
+        $projectMaterials = InventoryTransaction::with('material')
+            ->where('project_id', $project->id)
+            ->where('type', 'stock_out')
+            ->get()
+            ->groupBy('material_id')
+            ->map(function ($rows) {
+                $first = $rows->first();
+                $qty = $rows->sum(function ($row) {
+                    return (float) $row->quantity;
+                });
+                $lastUsed = $rows->sortByDesc('created_at')->first()?->created_at;
+                $unitPrice = (float) ($first?->material?->unit_price ?? 0);
+                $rowTotal = $qty * $unitPrice;
 
-                    return (object) [
-                        'material' => $first?->material,
-                        'quantity' => $qty,
-                        'last_used' => $lastUsed,
-                        'unit_price' => $unitPrice,
-                        'total' => $rowTotal,
-                    ];
-                })
-                ->values();
+                return (object) [
+                    'material' => $first?->material,
+                    'quantity' => $qty,
+                    'last_used' => $lastUsed,
+                    'unit_price' => $unitPrice,
+                    'total' => $rowTotal,
+                ];
+            })
+            ->values();
 
-            $projectMaterialsTotal = $projectMaterials->sum(function ($row) {
-                return (float) ($row->total ?? 0);
-            });
+        $projectMaterialsTotal = $projectMaterials->sum(function ($row) {
+            return (float) ($row->total ?? 0);
+        });
 
-            return view('admin.projects.show', compact('project', 'projectMaterials', 'projectMaterialsTotal'));
-        }
+        return view('admin.projects.show', compact('project', 'projectMaterials', 'projectMaterialsTotal'));
+    }
 
     public function create()
     {
@@ -73,9 +73,9 @@ class ProjectController extends Controller
             'Factory Project',
             'Building Project',
             'Road Project',
-            'Bus Terminal Project'
+            'Bus Terminal Project',
         ];
-        
+
         return view('admin.projects.create', compact('teamMembers', 'projectTypes'));
     }
 
@@ -100,16 +100,13 @@ class ProjectController extends Controller
             $validated['image'] = $imagePath;
         }
 
-        $validated['status'] = 'pending';
         $validated['progress'] = 0;
+        $validated['status'] = $this->resolveProjectStatusFromProgress((int) $validated['progress'], 'pending');
 
-        // get team member ids, then remove it from $validated
         $teamMemberIds = $validated['team_members'] ?? [];
         unset($validated['team_members']);
 
         $project = Project::create($validated);
-
-        // save pivot assignments
         $project->teamMembers()->sync($teamMemberIds);
 
         return redirect()->route('projects.index')->with('success', 'Project created successfully');
@@ -137,6 +134,9 @@ class ProjectController extends Controller
             $validated['image'] = $imagePath;
         }
 
+        $progress = (int) $validated['progress'];
+        $validated['status'] = $this->resolveProjectStatusFromProgress($progress, (string) $validated['status']);
+
         $project->update($validated);
 
         if ($request->has('team_members')) {
@@ -146,5 +146,16 @@ class ProjectController extends Controller
         return redirect()->route('projects.show', $project->id)->with('success', 'Project updated successfully');
     }
 
+    private function resolveProjectStatusFromProgress(int $progress, string $requestedStatus = 'pending'): string
+    {
+        if ($progress >= 100) {
+            return 'completed';
+        }
 
+        if ($progress <= 0) {
+            return 'pending';
+        }
+
+        return $requestedStatus === 'pending' ? 'pending' : 'ongoing';
+    }
 }

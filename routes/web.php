@@ -48,6 +48,8 @@ Route::middleware(['auth', 'employee'])->prefix('employee')->name('employee.')->
 
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [EmployeeProfileController::class, 'show'])->name('show');
+        Route::post('/update-request', [EmployeeProfileController::class, 'submitUpdateRequest'])->name('submit-update-request');
+        Route::post('/document-request', [EmployeeProfileController::class, 'submitDocumentRequest'])->name('submit-document-request');
     });
 });
 
@@ -78,6 +80,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
         Route::post('/update-requests/{id}/approve', [TeamController::class, 'approveUpdateRequest'])->name('update-requests.approve');
         Route::post('/update-requests/{id}/reject', [TeamController::class, 'rejectUpdateRequest'])->name('update-requests.reject');
+        Route::post('/document-requests/{id}/approve', [TeamController::class, 'approveDocumentRequest'])->name('document-requests.approve');
+        Route::post('/document-requests/{id}/reject', [TeamController::class, 'rejectDocumentRequest'])->name('document-requests.reject');
 
         Route::get('/members/list', [TeamController::class, 'listMembers'])->name('members.list');
     });
@@ -110,7 +114,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::post('/update-threshold', [InventoryController::class, 'updateThreshold'])->name('update-threshold');
     });
 
-    // ✅ NEW Materials (MMS) — REPLACEMENT BLOCK
+    // âœ… NEW Materials (MMS) â€” REPLACEMENT BLOCK
     Route::prefix('materials')->name('materials.')->group(function () {
 
         Route::get('/', [MaterialController::class, 'overview'])->name('overview');
@@ -138,3 +142,4 @@ Route::middleware(['auth', 'admin'])->group(function () {
 });
 
 require __DIR__ . '/auth.php';
+

@@ -152,6 +152,7 @@
             </button>
             <div class="relative flex-1">
                 <input
+                    id="financeSearch"
                     type="text"
                     placeholder="Search"
                     class="w-full rounded-full border border-gray-400 bg-[#EDEDED] px-5 py-2 pr-12 text-sm outline-none"
@@ -314,7 +315,8 @@
                     </thead>
                     <tbody class="text-gray-200">
                         @forelse($payrollRequests as $request)
-                            <tr class="border-b border-white/10">
+                            <tr class="border-b border-white/10 searchable-row"
+                                data-search="{{ strtolower(trim(($request->name ?? '').' '.($request->file_name ?? '').' '.($request->rate ?? '').' '.optional($request->date)->format('Y-m-d'))) }}">
                                 <td class="px-6 py-5">{{ $request->name }}</td>
                                 <td class="px-6 py-5">
                                     <div class="flex items-center gap-3">
@@ -349,6 +351,9 @@
                                 <td colspan="6" class="px-6 py-10 text-center text-gray-300">No payroll requests found.</td>
                             </tr>
                         @endforelse
+                        <tr id="payrollNoMatchRow" class="hidden">
+                            <td colspan="6" class="px-6 py-10 text-center text-gray-300">No matching payroll requests found.</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -370,7 +375,8 @@
                     </thead>
                     <tbody class="text-gray-200">
                         @forelse($expenseRequests as $request)
-                            <tr class="border-b border-white/10">
+                            <tr class="border-b border-white/10 searchable-row"
+                                data-search="{{ strtolower(trim(($request->materials ?? '').' '.($request->quantity ?? '').' '.($request->price_per_unit ?? '').' '.($request->total ?? '').' '.optional($request->date)->format('Y-m-d'))) }}">
                                 <td class="px-6 py-5">{{ $request->materials }}</td>
                                 <td class="px-6 py-5">{{ $request->quantity }}</td>
                                 <td class="px-6 py-5 text-gray-300">{{ $request->price_per_unit }}</td>
@@ -393,6 +399,9 @@
                                 <td colspan="6" class="px-6 py-10 text-center text-gray-300">No expense requests found.</td>
                             </tr>
                         @endforelse
+                        <tr id="expenseNoMatchRow" class="hidden">
+                            <td colspan="6" class="px-6 py-10 text-center text-gray-300">No matching expense requests found.</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -515,6 +524,53 @@
 </style>
 
 <script>
+    const financeSearchInput = document.getElementById('financeSearch');
+
+    function getActiveFinanceTab() {
+        if (!document.getElementById('payrollTab')?.classList.contains('hidden')) return 'payroll';
+        if (!document.getElementById('expenseTab')?.classList.contains('hidden')) return 'expense';
+        return 'manual';
+    }
+
+    function applyFinanceSearch() {
+        const query = (financeSearchInput?.value || '').toLowerCase().trim();
+        const activeTab = getActiveFinanceTab();
+
+        const tabConfig = {
+            payroll: {
+                selector: '#payrollTab .searchable-row',
+                noMatchRowId: 'payrollNoMatchRow',
+            },
+            expense: {
+                selector: '#expenseTab .searchable-row',
+                noMatchRowId: 'expenseNoMatchRow',
+            },
+        };
+
+        Object.entries(tabConfig).forEach(([tab, config]) => {
+            const rows = Array.from(document.querySelectorAll(config.selector));
+            const noMatchRow = document.getElementById(config.noMatchRowId);
+
+            if (!rows.length) {
+                if (noMatchRow) noMatchRow.classList.add('hidden');
+                return;
+            }
+
+            let visibleRows = 0;
+            rows.forEach((row) => {
+                const searchableText = (row.dataset.search || '').toLowerCase();
+                const shouldShow = !query || searchableText.includes(query);
+                row.classList.toggle('hidden', !shouldShow);
+                if (shouldShow) visibleRows++;
+            });
+
+            if (noMatchRow) {
+                const showNoMatch = tab === activeTab && visibleRows === 0;
+                noMatchRow.classList.toggle('hidden', !showNoMatch);
+            }
+        });
+    }
+
     function switchTab(e, tab) {
         //buttons lang
         document.querySelectorAll('.finance-tab').forEach(btn => {
@@ -541,6 +597,8 @@
         } catch (e) {
             // ignore url update errors
         }
+
+        applyFinanceSearch();
     }
 
     function openFundsModal() {
@@ -572,6 +630,9 @@
 
     qtyEl?.addEventListener('input', updateTotal);
     priceEl?.addEventListener('input', updateTotal);
+
+    financeSearchInput?.addEventListener('input', applyFinanceSearch);
+    applyFinanceSearch();
 </script>
 @endsection
 
