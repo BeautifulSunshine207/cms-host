@@ -144,6 +144,17 @@
         font-weight: 600;
     }
 
+    .ep-change-btn-center {
+        justify-content: center;
+        text-align: center;
+        min-width: 180px;
+    }
+
+    .ep-change-btn[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
     .ep-tier-wrap {
         margin-top: 12px;
     }
@@ -302,6 +313,18 @@
         color: #854d0e;
     }
 
+    .ep-alert-error {
+        background: #fef2f2;
+        border: 1px solid #fca5a5;
+        color: #991b1b;
+    }
+
+    .ep-doc-actions {
+        margin-top: 12px;
+        display: flex;
+        justify-content: flex-end;
+    }
+
     @media (max-width: 1200px) {
         .employee-profile-card {
             padding: 26px 24px 36px;
@@ -309,6 +332,9 @@
         .employee-profile-grid {
             grid-template-columns: 1fr;
             row-gap: 26px;
+        }
+        .ep-doc-actions {
+            justify-content: flex-start;
         }
     }
 
@@ -336,6 +362,30 @@
     <div class="employee-profile-card">
         @if(session('status') === 'password-updated')
             <div class="ep-alert ep-alert-success">Password updated successfully.</div>
+        @endif
+
+        @if(session('profile_success'))
+            <div class="ep-alert ep-alert-success">{{ session('profile_success') }}</div>
+        @endif
+
+        @if(session('document_success'))
+            <div class="ep-alert ep-alert-success">{{ session('document_success') }}</div>
+        @endif
+
+        @if(session('profile_warning'))
+            <div class="ep-alert ep-alert-warn">{{ session('profile_warning') }}</div>
+        @endif
+
+        @if(session('profile_error'))
+            <div class="ep-alert ep-alert-error">{{ session('profile_error') }}</div>
+        @endif
+
+        @if($pendingUpdateRequest)
+            <div class="ep-alert ep-alert-warn">You already have a pending profile update request awaiting admin approval.</div>
+        @endif
+
+        @if(($pendingDocumentRequestsCount ?? 0) > 0)
+            <div class="ep-alert ep-alert-warn">You have {{ $pendingDocumentRequestsCount }} document request(s) waiting for admin approval.</div>
         @endif
 
         @if(!$teamMember)
@@ -392,12 +442,22 @@
                                 <div class="ep-field-label">Password</div>
                                 <div class="ep-field-value">{{ $maskedPassword }}</div>
                             </div>
-                            <button type="button" class="ep-change-btn" onclick="openPasswordModal()">
+
+                            <button type="button" class="ep-change-btn ep-change-btn-center" onclick="openPasswordModal()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                                     <path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25Z" stroke="currentColor" stroke-width="1.8"/>
                                     <path d="m14.06 4.19 3.75 3.75 1.77-1.77a1.25 1.25 0 0 0 0-1.77L17.6 2.42a1.25 1.25 0 0 0-1.77 0l-1.77 1.77Z" stroke="currentColor" stroke-width="1.8"/>
                                 </svg>
                                 <span>Change Password</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                class="ep-change-btn ep-change-btn-center"
+                                onclick="openUpdateProfileModal()"
+                                {{ $teamMember ? '' : 'disabled' }}
+                            >
+                                <span>Update Profile</span>
                             </button>
                         </div>
                     </div>
@@ -462,6 +522,17 @@
                         </article>
                     @endforelse
                 </div>
+
+                <div class="ep-doc-actions">
+                    <button
+                        type="button"
+                        class="ep-change-btn ep-change-btn-center"
+                        onclick="openDocumentModal()"
+                        {{ $teamMember ? '' : 'disabled' }}
+                    >
+                        <span>Submit Document</span>
+                    </button>
+                </div>
             </section>
         </div>
     </div>
@@ -519,19 +590,211 @@
     </div>
 </div>
 
+<div id="updateProfileModal" class="fixed inset-0 z-[9999] hidden">
+    <div class="absolute inset-0 bg-black/55" onclick="closeUpdateProfileModal()"></div>
+
+    <div class="relative flex h-full items-center justify-center p-4">
+        <div class="w-full max-w-4xl rounded-2xl bg-white p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-xl font-semibold text-gray-900">Update Profile Request</h3>
+                <button type="button" onclick="closeUpdateProfileModal()" class="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            @if($errors->updateProfile->any())
+                <div class="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+                    <div class="font-semibold mb-1">Please fix the following:</div>
+                    <ul class="list-disc ml-5">
+                        @foreach($errors->updateProfile->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('employee.profile.submit-update-request') }}" enctype="multipart/form-data" class="space-y-5">
+                @csrf
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Name</label>
+                        <input type="text" name="name" value="{{ old('name', $teamMember?->name ?? $user->name) }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" required>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Role</label>
+                        <input type="text" name="role" value="{{ old('role', $teamMember?->role) }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Location</label>
+                        <select name="location" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                            @php $oldLocation = old('location', $teamMember?->location); @endphp
+                            <option value="">Select location</option>
+                            <option value="Onsite" {{ $oldLocation === 'Onsite' ? 'selected' : '' }}>Onsite</option>
+                            <option value="Remote" {{ $oldLocation === 'Remote' ? 'selected' : '' }}>Remote</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" name="email" value="{{ old('email', $teamMember?->email ?? $user->email) }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" required>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Phone</label>
+                        <input type="text" name="phone" value="{{ old('phone', $teamMember?->phone) }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Gender</label>
+                        <input type="text" name="gender" value="{{ old('gender', $teamMember?->gender) }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Date of Birth</label>
+                        <input type="date" name="date_of_birth" value="{{ old('date_of_birth', $teamMember?->date_of_birth ? \Carbon\Carbon::parse($teamMember->date_of_birth)->toDateString() : '') }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Nationality</label>
+                        <input type="text" name="nationality" value="{{ old('nationality', $teamMember?->nationality) }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Address Line</label>
+                        <input type="text" name="address_line" value="{{ old('address_line', $teamMember?->address_line) }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">City</label>
+                        <input type="text" name="address_city" value="{{ old('address_city', $teamMember?->address_city) }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">State</label>
+                        <input type="text" name="address_state" value="{{ old('address_state', $teamMember?->address_state) }}" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Verification Photo (Optional)</label>
+                        <input type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp,.gif" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 pt-4">
+                    <h4 class="text-sm font-semibold text-gray-900">Optional Document Update (also sent for admin approval)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                        <div>
+                            <label class="text-sm font-medium text-gray-700">Document Type</label>
+                            <input type="text" name="document_type" value="{{ old('document_type') }}" placeholder="e.g. Resume, ID, Certificate" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-700">Documents</label>
+                            <input type="file" name="documents[]" multiple class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeUpdateProfileModal()" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100">
+                        Cancel
+                    </button>
+                    <button type="submit" class="rounded-lg bg-[#ffd400] px-5 py-2 text-sm font-semibold text-black hover:brightness-95">
+                        Submit for Approval
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="documentModal" class="fixed inset-0 z-[9999] hidden">
+    <div class="absolute inset-0 bg-black/55" onclick="closeDocumentModal()"></div>
+
+    <div class="relative flex h-full items-center justify-center p-4">
+        <div class="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-xl font-semibold text-gray-900">Submit Document</h3>
+                <button type="button" onclick="closeDocumentModal()" class="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            @if($errors->submitDocument->any())
+                <div class="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+                    <div class="font-semibold mb-1">Please fix the following:</div>
+                    <ul class="list-disc ml-5">
+                        @foreach($errors->submitDocument->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('employee.profile.submit-document-request') }}" enctype="multipart/form-data" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label class="text-sm font-medium text-gray-700">Document Type</label>
+                    <input type="text" name="document_type" value="{{ old('document_type') }}" placeholder="e.g. Resume, ID, Certificate" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" required>
+                </div>
+
+                <div>
+                    <label class="text-sm font-medium text-gray-700">Select Document(s)</label>
+                    <input type="file" name="documents[]" multiple class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" required>
+                    <p class="mt-1 text-xs text-gray-500">Allowed: image, PDF, DOC, DOCX, PPT, XLS, TXT. Max 15MB each.</p>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeDocumentModal()" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100">
+                        Cancel
+                    </button>
+                    <button type="submit" class="rounded-lg bg-[#ffd400] px-5 py-2 text-sm font-semibold text-black hover:brightness-95">
+                        Submit for Approval
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
-    function openPasswordModal() {
-        document.getElementById('passwordModal')?.classList.remove('hidden');
+    function openModal(id) {
+        document.getElementById(id)?.classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
     }
 
-    function closePasswordModal() {
-        document.getElementById('passwordModal')?.classList.add('hidden');
+    function closeModal(id) {
+        document.getElementById(id)?.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
     }
+
+    function openPasswordModal() { openModal('passwordModal'); }
+    function closePasswordModal() { closeModal('passwordModal'); }
+
+    function openUpdateProfileModal() { openModal('updateProfileModal'); }
+    function closeUpdateProfileModal() { closeModal('updateProfileModal'); }
+
+    function openDocumentModal() { openModal('documentModal'); }
+    function closeDocumentModal() { closeModal('documentModal'); }
 
     @if($errors->updatePassword->any())
         openPasswordModal();
     @endif
+
+    @if($errors->updateProfile->any())
+        openUpdateProfileModal();
+    @endif
+
+    @if($errors->submitDocument->any())
+        openDocumentModal();
+    @endif
 </script>
 @endsection
+

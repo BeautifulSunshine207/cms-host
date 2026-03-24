@@ -1,12 +1,15 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Models\TeamMemberUpdateRequest;
-use App\Models\TeamMember;
-use App\Models\Project;
+
 use App\Models\AttendanceRecord;
-use App\Models\VerificationHistory;
+use App\Models\Document;
 use App\Models\PayrollRequest;
+use App\Models\Project;
+use App\Models\TeamMember;
+use App\Models\TeamMemberDocumentRequest;
+use App\Models\TeamMemberUpdateRequest;
+use App\Models\VerificationHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -20,7 +23,7 @@ class TeamController extends Controller
         $verifiedCount = VerificationHistory::where('status', 'Verified')->count();
         $deniedCount = VerificationHistory::where('status', 'Denied')->count();
         $attendanceRecords = AttendanceRecord::with(['teamMember', 'document'])->where('status', 'pending')->get();
-        
+
         return view('admin.team.index', compact(
             'teamMembers',
             'projects',
@@ -34,21 +37,25 @@ class TeamController extends Controller
     public function documents(Request $request)
     {
         $hasUpdateTable = Schema::hasTable('team_member_update_requests');
+        $hasDocumentRequestTable = Schema::hasTable('team_member_document_requests');
 
         $query = TeamMember::query()->with('documents');
         if ($hasUpdateTable) {
             $query->with('pendingUpdateRequest');
         }
+        if ($hasDocumentRequestTable) {
+            $query->with('pendingDocumentRequests');
+        }
 
         $teamMembers = $query->orderBy('name')->get();
 
-        return view('admin.team.documents', compact('teamMembers', 'hasUpdateTable'));
+        return view('admin.team.documents', compact('teamMembers', 'hasUpdateTable', 'hasDocumentRequestTable'));
     }
 
     public function payroll()
     {
         $teamMembers = TeamMember::with('payrollRecords')->get();
-        
+
         return view('admin.team.payroll', compact('teamMembers'));
     }
 
@@ -56,41 +63,55 @@ class TeamController extends Controller
     {
         $projects = Project::with('teamMembers')->get();
         $teamMembers = TeamMember::all();
-        
+
         return view('admin.team.assign', compact('projects', 'teamMembers'));
     }
 
     public function attendance()
     {
-        $attendanceRecords = AttendanceRecord::with(['teamMember', 'document'])->where('status', 'pending')->get();
-        
+        $attendanceRecords = AttendanceRecord::with(['teamMember', 'document', 'projectItem'])
+            ->where('status', 'pending')
+            ->get();
+
         return view('admin.team.attendance', compact('attendanceRecords'));
     }
 
     public function approveAttendance(Request $request, $id)
     {
-        $attendance = AttendanceRecord::with(['teamMember', 'document'])->findOrFail($id);
+        $validated = $request->validate([
+            'project_progress' => 'required|integer|min:0|max:100',
+        ]);
+
+        $attendance = AttendanceRecord::with(['teamMember', 'document', 'projectItem'])->findOrFail($id);
         $attendance->update(['status' => 'verified']);
 
         $member = $attendance->teamMember;
         $doc = $attendance->document;
 
+        if ($attendance->projectItem) {
+            $progress = (int) $validated['project_progress'];
+            $attendance->projectItem->update([
+                'progress' => $progress,
+                'status' => $this->resolveProjectStatusFromProgress($progress),
+            ]);
+        }
+
         PayrollRequest::create([
             'name' => $member?->name ?? 'Unknown',
             'file_name' => $doc?->name ?? 'Attendance Report',
             'file_path' => $doc?->path ?? '',
-            'rate' => $member?->salary ?? 'â‚±0',
+            'rate' => $member?->salary ?? 'P0',
             'date' => $attendance->date ?? now()->toDateString(),
             'status' => 'pending',
         ]);
-        
+
         VerificationHistory::create([
             'team_member_id' => $attendance->team_member_id,
             'status' => 'Verified',
             'date_submitted' => $attendance->date,
             'date_checked' => now(),
         ]);
-        
+
         return redirect()->back()->with('success', 'Attendance approved');
     }
 
@@ -119,38 +140,35 @@ class TeamController extends Controller
             'admin_response_name' => $adminResponseName,
             'admin_response_path' => $adminResponsePath,
         ]);
-        
+
         VerificationHistory::create([
             'team_member_id' => $attendance->team_member_id,
             'status' => 'Denied',
             'date_submitted' => $attendance->date,
             'date_checked' => now(),
         ]);
-        
+
         return redirect()->back()->with('success', 'Attendance rejected');
     }
 
     public function assignToProject(Request $request, $projectId)
-{
-    $validated = $request->validate([
-        'team_members' => 'required|array|min:1',
-        'team_members.*' => 'integer|exists:team_members,id',
-        // optional: lets us “replace” vs “add”
-        'mode' => 'nullable|in:replace,add',
-    ]);
+    {
+        $validated = $request->validate([
+            'team_members' => 'required|array|min:1',
+            'team_members.*' => 'integer|exists:team_members,id',
+            'mode' => 'nullable|in:replace,add',
+        ]);
 
-    $project = Project::findOrFail($projectId);
+        $project = Project::findOrFail($projectId);
 
-    // Default: replace assigned members for that project
-    if (($validated['mode'] ?? 'replace') === 'add') {
-        $project->teamMembers()->syncWithoutDetaching($validated['team_members']);
-    } else {
-        $project->teamMembers()->sync($validated['team_members']);
+        if (($validated['mode'] ?? 'replace') === 'add') {
+            $project->teamMembers()->syncWithoutDetaching($validated['team_members']);
+        } else {
+            $project->teamMembers()->sync($validated['team_members']);
+        }
+
+        return redirect()->back()->with('success', 'Team members assigned successfully');
     }
-
-    return redirect()->back()->with('success', 'Team members assigned successfully');
-}
-
 
     public function listMembers(Request $request)
     {
@@ -162,8 +180,8 @@ class TeamController extends Controller
         if ($search) {
             $q->where(function ($w) use ($search) {
                 $w->where('name', 'like', "%{$search}%")
-                ->orWhere('role', 'like', "%{$search}%")
-                ->orWhere('location', 'like', "%{$search}%");
+                    ->orWhere('role', 'like', "%{$search}%")
+                    ->orWhere('location', 'like', "%{$search}%");
             });
         }
 
@@ -176,8 +194,10 @@ class TeamController extends Controller
     {
         $req = TeamMemberUpdateRequest::with('teamMember')->findOrFail($id);
 
-        // apply changes to the team member
-        $req->teamMember->update($req->changes);
+        $changes = is_array($req->changes) ? $req->changes : [];
+        if (! empty($changes)) {
+            $req->teamMember->update($changes);
+        }
 
         $req->update([
             'status' => 'approved',
@@ -205,6 +225,63 @@ class TeamController extends Controller
         return redirect()->back()->with('success', 'Update request rejected');
     }
 
+    public function approveDocumentRequest($id)
+    {
+        $req = TeamMemberDocumentRequest::findOrFail($id);
 
+        if ($req->status !== 'pending') {
+            return redirect()->back()->with('error', 'Document request was already processed.');
+        }
 
+        Document::firstOrCreate([
+            'team_member_id' => $req->team_member_id,
+            'path' => $req->path,
+        ], [
+            'name' => $req->name,
+            'size' => $req->size,
+            'type' => $req->type,
+        ]);
+
+        $req->update([
+            'status' => 'approved',
+            'reviewed_at' => now(),
+            'remarks' => null,
+        ]);
+
+        return redirect()->back()->with('success', 'Submitted document approved');
+    }
+
+    public function rejectDocumentRequest(Request $request, $id)
+    {
+        $data = $request->validate([
+            'remarks' => 'required|string',
+        ]);
+
+        $req = TeamMemberDocumentRequest::findOrFail($id);
+
+        if ($req->status !== 'pending') {
+            return redirect()->back()->with('error', 'Document request was already processed.');
+        }
+
+        $req->update([
+            'status' => 'rejected',
+            'reviewed_at' => now(),
+            'remarks' => $data['remarks'],
+        ]);
+
+        return redirect()->back()->with('success', 'Submitted document rejected');
+    }
+
+    private function resolveProjectStatusFromProgress(int $progress): string
+    {
+        if ($progress >= 100) {
+            return 'completed';
+        }
+
+        if ($progress <= 0) {
+            return 'pending';
+        }
+
+        return 'ongoing';
+    }
 }

@@ -34,7 +34,6 @@ class TeamMember extends Model
     {
         return $this->belongsToMany(Project::class, 'project_team_member')
             ->withTimestamps();
-            
     }
 
     public function documents()
@@ -65,13 +64,26 @@ class TeamMember extends Model
 
     public function updateRequests()
     {
-        return $this->hasMany(\App\Models\TeamMemberUpdateRequest::class);
+        return $this->hasMany(TeamMemberUpdateRequest::class);
     }
 
     public function pendingUpdateRequest()
     {
-        return $this->hasOne(\App\Models\TeamMemberUpdateRequest::class)
+        return $this->hasOne(TeamMemberUpdateRequest::class)
             ->where('status', 'pending')
             ->latestOfMany();
     }
+
+    public function documentRequests()
+    {
+        return $this->hasMany(TeamMemberDocumentRequest::class);
+    }
+
+    public function pendingDocumentRequests()
+    {
+        return $this->hasMany(TeamMemberDocumentRequest::class)
+            ->where('status', 'pending')
+            ->latest();
+    }
 }
+
